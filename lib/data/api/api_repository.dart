@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 
+import 'api_routes.dart';
 import 'api_service.dart';
 
 class ApiRepository {
@@ -7,73 +8,28 @@ class ApiRepository {
 
   final ApiService _api;
 
-  Dio get client => _api.client;
-
-  Future<Response<T>> get<T>(
-    String path, {
-    Map<String, dynamic>? queryParameters,
-    Options? options,
+  Future<Response<ResponseBody>> streamGeminiGenerateContent({
+    required String model,
+    required String apiKey,
+    required Map<String, dynamic> body,
+    CancelToken? cancelToken,
   }) {
-    return client.get<T>(
-      path,
-      queryParameters: queryParameters,
-      options: options,
-    );
-  }
-
-  Future<Response<T>> post<T>(
-    String path, {
-    Object? data,
-    Map<String, dynamic>? queryParameters,
-    Options? options,
-  }) {
-    return client.post<T>(
-      path,
-      data: data,
-      queryParameters: queryParameters,
-      options: options,
-    );
-  }
-
-  Future<Response<T>> put<T>(
-    String path, {
-    Object? data,
-    Map<String, dynamic>? queryParameters,
-    Options? options,
-  }) {
-    return client.put<T>(
-      path,
-      data: data,
-      queryParameters: queryParameters,
-      options: options,
-    );
-  }
-
-  Future<Response<T>> patch<T>(
-    String path, {
-    Object? data,
-    Map<String, dynamic>? queryParameters,
-    Options? options,
-  }) {
-    return client.patch<T>(
-      path,
-      data: data,
-      queryParameters: queryParameters,
-      options: options,
-    );
-  }
-
-  Future<Response<T>> delete<T>(
-    String path, {
-    Object? data,
-    Map<String, dynamic>? queryParameters,
-    Options? options,
-  }) {
-    return client.delete<T>(
-      path,
-      data: data,
-      queryParameters: queryParameters,
-      options: options,
+    return _api.post<ResponseBody>(
+      ApiRoutes.geminiStreamGenerateContent(model),
+      queryParameters: {
+        'alt': 'sse',
+        'key': apiKey,
+      },
+      data: body,
+      options: Options(
+        responseType: ResponseType.stream,
+        receiveTimeout: Duration.zero,
+        headers: const {
+          Headers.acceptHeader: 'text/event-stream',
+          Headers.contentTypeHeader: Headers.jsonContentType,
+        },
+      ),
+      cancelToken: cancelToken,
     );
   }
 }

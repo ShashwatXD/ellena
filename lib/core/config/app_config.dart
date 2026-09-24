@@ -9,6 +9,7 @@ class AppConfig {
     required this.appName,
     required this.apiBaseUrl,
     required this.geminiApiKey,
+    required this.geminiModel,
     required this.enableFakeStream,
   });
 
@@ -21,6 +22,7 @@ class AppConfig {
       apiBaseUrl: json['API_BASE_URL'] as String? ??
           'https://generativelanguage.googleapis.com',
       geminiApiKey: json['GEMINI_API_KEY'] as String? ?? '',
+      geminiModel: json['GEMINI_MODEL'] as String? ?? 'gemini-2.0-flash',
       enableFakeStream: (json['ENABLE_FAKE_STREAM'] as String? ?? 'true')
               .toLowerCase() ==
           'true',
@@ -41,6 +43,7 @@ class AppConfig {
   final String appName;
   final String apiBaseUrl;
   final String geminiApiKey;
+  final String geminiModel;
   final bool enableFakeStream;
 
   bool get isDev => flavor == 'dev';

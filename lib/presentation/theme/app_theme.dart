@@ -61,6 +61,14 @@ abstract final class AppTheme {
       dividerColor: outline,
       textTheme: textTheme,
       primaryTextTheme: textTheme,
+      splashFactory: InkSparkle.splashFactory,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+        },
+      ),
       appBarTheme: AppBarTheme(
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -69,6 +77,7 @@ abstract final class AppTheme {
         foregroundColor: onSurface,
         surfaceTintColor: Colors.transparent,
         titleTextStyle: textTheme.titleLarge,
+        toolbarHeight: 56,
       ),
       cardTheme: CardThemeData(
         color: surface,

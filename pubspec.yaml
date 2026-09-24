@@ -40,6 +40,7 @@ dependencies:
   hive_flutter: ^1.1.0
   flutter_riverpod: ^2.6.1
   google_fonts: ^8.2.1
+  flutter_streaming_text_markdown: ^1.10.1
 
 dev_dependencies:
   flutter_test:

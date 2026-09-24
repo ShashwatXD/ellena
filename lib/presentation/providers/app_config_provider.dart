@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'app_config.dart';
+import '../../core/config/app_config.dart';
 
 final appConfigProvider = Provider<AppConfig>((ref) => AppConfig.current);
