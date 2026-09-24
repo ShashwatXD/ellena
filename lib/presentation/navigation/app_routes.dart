@@ -1,22 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../screens/account/account_screen.dart';
-import '../screens/chat/chat_screen.dart';
-import '../screens/home/home_screen.dart';
 import '../common_widgets/chat_shell.dart';
+import '../screens/account/account_screen.dart';
+import '../screens/home/home_screen.dart';
 
 abstract final class AppRoutes {
   static const String home = '/';
   static const String homeName = 'home';
 
-  static const String chat = '/chat/:id';
-  static const String chatName = 'chat';
-
   static const String account = '/account';
   static const String accountName = 'account';
-
-  static String chatPath(String id) => '/chat/$id';
 }
 
 CustomTransitionPage<void> _fadeSlidePage({
@@ -56,14 +50,6 @@ List<RouteBase> get appRoutes => [
             path: AppRoutes.home,
             name: AppRoutes.homeName,
             builder: (context, state) => const HomeScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.chat,
-            name: AppRoutes.chatName,
-            builder: (context, state) {
-              final id = state.pathParameters['id']!;
-              return ChatScreen(conversationId: id);
-            },
           ),
         ],
       ),

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
+import '../api/api_exception.dart';
 import '../api/api_repository.dart';
 import 'streaming_service.dart';
 
@@ -43,11 +44,21 @@ class GeminiStreamingService implements StreamingService {
       },
     ];
 
-    final response = await _repository.streamGeminiGenerateContent(
+    final result = await _repository.streamGeminiGenerateContent(
       model: model,
       apiKey: apiKey,
       body: {'contents': contents},
       cancelToken: _cancelToken,
+    );
+
+    final response = result.when(
+      success: (value) => value,
+      failure: (error, stackTrace) {
+        if (error is ApiException) {
+          throw error;
+        }
+        Error.throwWithStackTrace(error, stackTrace ?? StackTrace.current);
+      },
     );
 
     final body = response.data;

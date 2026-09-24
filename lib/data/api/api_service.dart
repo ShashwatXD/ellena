@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 
+import '../../core/result/result.dart';
 import 'api_exception.dart';
 import 'api_interceptor.dart';
 
@@ -24,7 +25,7 @@ class ApiService {
 
   final Dio _dio;
 
-  Future<Response<T>> get<T>(
+  Future<Result<Response<T>>> get<T>(
     String path, {
     Map<String, dynamic>? queryParameters,
     Options? options,
@@ -40,7 +41,7 @@ class ApiService {
     );
   }
 
-  Future<Response<T>> post<T>(
+  Future<Result<Response<T>>> post<T>(
     String path, {
     Object? data,
     Map<String, dynamic>? queryParameters,
@@ -58,7 +59,7 @@ class ApiService {
     );
   }
 
-  Future<Response<T>> put<T>(
+  Future<Result<Response<T>>> put<T>(
     String path, {
     Object? data,
     Map<String, dynamic>? queryParameters,
@@ -76,7 +77,7 @@ class ApiService {
     );
   }
 
-  Future<Response<T>> patch<T>(
+  Future<Result<Response<T>>> patch<T>(
     String path, {
     Object? data,
     Map<String, dynamic>? queryParameters,
@@ -94,7 +95,7 @@ class ApiService {
     );
   }
 
-  Future<Response<T>> delete<T>(
+  Future<Result<Response<T>>> delete<T>(
     String path, {
     Object? data,
     Map<String, dynamic>? queryParameters,
@@ -112,11 +113,15 @@ class ApiService {
     );
   }
 
-  Future<Response<T>> _guard<T>(Future<Response<T>> Function() request) async {
+  Future<Result<Response<T>>> _guard<T>(
+    Future<Response<T>> Function() request,
+  ) async {
     try {
-      return await request();
-    } on DioException catch (error) {
-      throw ApiException.fromDio(error);
+      return Success(await request());
+    } on DioException catch (error, stackTrace) {
+      return Failure(ApiException.fromDio(error), stackTrace);
+    } catch (error, stackTrace) {
+      return Failure(error, stackTrace);
     }
   }
 }

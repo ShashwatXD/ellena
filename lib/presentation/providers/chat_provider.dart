@@ -32,11 +32,14 @@ class ChatNotifier extends Notifier<ChatState> {
       _activeMessageIds.clear();
     });
 
-    final snapshot = _storage.load();
-    return ChatState(
-      conversations: snapshot.conversations,
-      messagesByConversation: snapshot.messagesByConversation,
-      activeConversationId: snapshot.activeConversationId,
+    final loaded = _storage.load();
+    return loaded.when(
+      success: (snapshot) => ChatState(
+        conversations: snapshot.conversations,
+        messagesByConversation: snapshot.messagesByConversation,
+        activeConversationId: snapshot.activeConversationId,
+      ),
+      failure: (error, stackTrace) => const ChatState(),
     );
   }
 

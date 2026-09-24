@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 
+import '../../core/result/result.dart';
 import 'api_routes.dart';
 import 'api_service.dart';
 
@@ -8,7 +9,7 @@ class ApiRepository {
 
   final ApiService _api;
 
-  Future<Response<ResponseBody>> streamGeminiGenerateContent({
+  Future<Result<Response<ResponseBody>>> streamGeminiGenerateContent({
     required String model,
     required String apiKey,
     required Map<String, dynamic> body,
