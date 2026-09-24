@@ -66,6 +66,7 @@ class ChatNotifier extends Notifier<ChatState> {
         ...state.messagesByConversation,
         conversationId: [userMessage, assistantMessage],
       },
+      activeConversationId: conversationId,
     );
 
     unawaited(
@@ -174,6 +175,15 @@ class ChatNotifier extends Notifier<ChatState> {
     _subscriptions.clear();
     _activeMessageIds.clear();
     state = const ChatState();
+  }
+
+  void startNewChat() {
+    state = state.copyWith(clearActiveConversationId: true);
+  }
+
+  void openConversation(String conversationId) {
+    if (state.conversationById(conversationId) == null) return;
+    state = state.copyWith(activeConversationId: conversationId);
   }
 
   void retryMessage(String conversationId, String messageId) {

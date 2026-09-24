@@ -46,6 +46,7 @@ class ChatDrawer extends ConsumerWidget {
                     tooltip: AppConstants.newChatTooltip,
                     onPressed: () {
                       HapticFeedback.selectionClick();
+                      ref.read(chatProvider.notifier).startNewChat();
                       Navigator.of(context).pop();
                       context.go(AppRoutes.home);
                     },
@@ -109,13 +110,13 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-class _ConversationTile extends StatelessWidget {
+class _ConversationTile extends ConsumerWidget {
   const _ConversationTile({required this.conversation});
 
   final Conversation conversation;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
     return ListTile(
@@ -131,8 +132,9 @@ class _ConversationTile extends StatelessWidget {
       ),
       onTap: () {
         HapticFeedback.selectionClick();
+        ref.read(chatProvider.notifier).openConversation(conversation.id);
         Navigator.of(context).pop();
-        context.go(AppRoutes.chatPath(conversation.id));
+        context.go(AppRoutes.home);
       },
     );
   }

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_constants.dart';
-import '../navigation/app_routes.dart';
 import '../providers/providers.dart';
 import '../theme/app_breakpoints.dart';
 import '../theme/app_motion.dart';
@@ -12,19 +10,26 @@ import '../widgets/chat_composer.dart';
 import '../widgets/ellena_app_bar.dart';
 import '../widgets/mock_scenario_picker.dart';
 import '../widgets/suggestion_chips.dart';
+import 'chat_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
-  void _startChat(BuildContext context, WidgetRef ref, String text) {
+  void _startChat(WidgetRef ref, String text) {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
-    final id = ref.read(chatProvider.notifier).startConversation(trimmed);
-    context.go(AppRoutes.chatPath(id));
+    ref.read(chatProvider.notifier).startConversation(trimmed);
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final activeId = ref.watch(
+      chatProvider.select((s) => s.activeConversationId),
+    );
+    if (activeId != null) {
+      return ChatScreen(conversationId: activeId);
+    }
+
     final theme = Theme.of(context);
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final pagePad = AppBreakpoints.pagePadding(context);
@@ -105,20 +110,19 @@ class HomeScreen extends ConsumerWidget {
                       child: ChatComposer(
                         placement: ComposerPlacement.hero,
                         hintText: AppConstants.composerHint,
-                        onSend: (text) => _startChat(context, ref, text),
+                        onSend: (text) => _startChat(ref, text),
                       ),
                     ),
                     SizedBox(height: compact ? AppSpacing.md : AppSpacing.lg),
                     if (showMockChips)
                       MockScenarioPicker(
                         onSelected: (scenario) =>
-                            _startChat(context, ref, scenario.label),
+                            _startChat(ref, scenario.label),
                       )
                     else
                       SuggestionChips(
                         suggestions: AppConstants.homeSuggestions,
-                        onSelected: (value) =>
-                            _startChat(context, ref, value),
+                        onSelected: (value) => _startChat(ref, value),
                       ),
                   ],
                 ),

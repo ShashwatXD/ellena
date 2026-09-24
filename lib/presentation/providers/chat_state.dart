@@ -5,10 +5,12 @@ class ChatState {
   const ChatState({
     this.conversations = const [],
     this.messagesByConversation = const {},
+    this.activeConversationId,
   });
 
   final List<Conversation> conversations;
   final Map<String, List<Message>> messagesByConversation;
+  final String? activeConversationId;
 
   List<Message> messagesFor(String conversationId) {
     return messagesByConversation[conversationId] ?? const [];
@@ -24,11 +26,16 @@ class ChatState {
   ChatState copyWith({
     List<Conversation>? conversations,
     Map<String, List<Message>>? messagesByConversation,
+    String? activeConversationId,
+    bool clearActiveConversationId = false,
   }) {
     return ChatState(
       conversations: conversations ?? this.conversations,
       messagesByConversation:
           messagesByConversation ?? this.messagesByConversation,
+      activeConversationId: clearActiveConversationId
+          ? null
+          : (activeConversationId ?? this.activeConversationId),
     );
   }
 }

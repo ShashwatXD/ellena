@@ -117,6 +117,7 @@ class _SuggestionChipState extends State<_SuggestionChip>
           onTapCancel: () => setState(() => _pressed = false),
           onTapUp: (_) => setState(() => _pressed = false),
           onTap: () {
+            setState(() => _pressed = false);
             HapticFeedback.selectionClick();
             widget.onSelected();
           },

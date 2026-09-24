@@ -309,7 +309,7 @@ class _AssistantActions extends StatelessWidget {
       children: [
         if (showSuccess)
           _SuccessCue(motion: motion, color: colors.onSurfaceVariant),
-        TextButton.icon(
+        IconButton(
           onPressed: () => _copy(context),
           style: TextButton.styleFrom(
             foregroundColor: colors.onSurfaceVariant,
@@ -319,13 +319,6 @@ class _AssistantActions extends StatelessWidget {
             visualDensity: VisualDensity.compact,
           ),
           icon: const Icon(Icons.copy_rounded, size: 15),
-          label: Text(
-            AppConstants.copyLabel,
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: colors.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
         ),
       ],
     );

@@ -22,7 +22,6 @@ abstract final class AppConstants {
   static const String stoppedLabel = 'Stopped';
   static const String genericError = 'Something went wrong';
   static const String retryLabel = 'Retry';
-  static const String copyLabel = 'Copy';
   static const String copiedLabel = 'Copied';
   static const String geminiRequestFailed = 'Request failed';
 

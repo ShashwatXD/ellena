@@ -15,14 +15,11 @@ class MockScenarioPicker extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selected = ref.watch(mockStreamScenarioProvider);
-
     return SuggestionChips(
       suggestions: [
         for (final scenario in MockStreamScenario.all)
           (icon: scenario.icon, label: scenario.label),
       ],
-      selectedLabel: selected.label,
       onSelected: (label) {
         final scenario = MockStreamScenario.byLabel(label);
         ref.read(mockStreamScenarioProvider.notifier).select(scenario);
