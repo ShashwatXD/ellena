@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/constants/app_constants.dart';
 import '../../core/models/llm_model.dart';
 import '../providers/providers.dart';
 import '../theme/app_radii.dart';
@@ -22,7 +23,7 @@ class ModelSelector extends ConsumerWidget {
     final selected = ref.watch(selectedModelProvider);
 
     return PopupMenuButton<LlmModel>(
-      tooltip: 'Model',
+      tooltip: AppConstants.modelTooltip,
       enabled: enabled,
       offset: const Offset(0, -8),
       position: PopupMenuPosition.over,

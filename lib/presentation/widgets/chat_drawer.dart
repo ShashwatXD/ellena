@@ -41,7 +41,7 @@ class ChatDrawer extends ConsumerWidget {
                     ),
                   ),
                   IconButton(
-                    tooltip: 'New chat',
+                    tooltip: AppConstants.newChatTooltip,
                     onPressed: () {
                       HapticFeedback.selectionClick();
                       Navigator.of(context).pop();
@@ -60,7 +60,7 @@ class ChatDrawer extends ConsumerWidget {
               child: conversations.isEmpty
                   ? Center(
                       child: Text(
-                        'No chats yet',
+                        AppConstants.noChatsYet,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: colors.onSurfaceVariant,
                         ),
@@ -70,11 +70,11 @@ class ChatDrawer extends ConsumerWidget {
                       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
                       children: [
                         if (pinned.isNotEmpty) ...[
-                          const _SectionLabel(label: 'Pinned'),
+                          const _SectionLabel(label: AppConstants.pinnedSection),
                           ...pinned.map((c) => _ConversationTile(conversation: c)),
                         ],
                         if (recent.isNotEmpty) ...[
-                          const _SectionLabel(label: 'Recent'),
+                          const _SectionLabel(label: AppConstants.recentSection),
                           ...recent.map((c) => _ConversationTile(conversation: c)),
                         ],
                       ],

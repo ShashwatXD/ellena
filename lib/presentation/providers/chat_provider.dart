@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/constants/app_constants.dart';
 import '../../core/models/conversation.dart';
 import '../../core/models/message.dart';
 import '../../core/models/message_status.dart';
@@ -142,7 +143,7 @@ class ChatNotifier extends Notifier<ChatState> {
     messages[index] = messages[index].copyWith(
       status: MessageStatus.stopped,
       content: messages[index].content.isEmpty
-          ? 'Stopped'
+          ? AppConstants.stoppedLabel
           : messages[index].content,
     );
 
@@ -160,6 +161,16 @@ class ChatNotifier extends Notifier<ChatState> {
               m.role == MessageRole.assistant &&
               m.status == MessageStatus.streaming,
         );
+  }
+
+  Future<void> deleteAllChats() async {
+    await ref.read(streamingServiceProvider).cancel();
+    for (final subscription in _subscriptions.values) {
+      await subscription.cancel();
+    }
+    _subscriptions.clear();
+    _activeMessageIds.clear();
+    state = const ChatState();
   }
 
   Future<void> _beginStream({
@@ -272,10 +283,10 @@ class ChatNotifier extends Notifier<ChatState> {
     final isCancel =
         error is DioException && error.type == DioExceptionType.cancel;
     final message = isCancel
-        ? 'Stopped'
+        ? AppConstants.stoppedLabel
         : error is DioException
-            ? 'Gemini request failed'
-            : 'Something went wrong';
+            ? AppConstants.geminiRequestFailed
+            : AppConstants.genericError;
 
     messages[index] = messages[index].copyWith(
       status: isCancel ? MessageStatus.stopped : MessageStatus.failed,

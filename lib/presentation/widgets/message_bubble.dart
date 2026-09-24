@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_streaming_text_markdown/flutter_streaming_text_markdown.dart';
 
+import '../../core/constants/app_constants.dart';
 import '../../core/models/message.dart';
 import '../../core/models/message_status.dart';
 import '../theme/app_radii.dart';
@@ -134,7 +135,7 @@ class _AssistantBubble extends StatelessWidget {
             if (message.status == MessageStatus.stopped) ...[
               const SizedBox(height: AppSpacing.xs),
               _StatusChip(
-                label: 'Interrupted',
+                label: AppConstants.interruptedLabel,
                 color: colors.onSurfaceVariant,
                 background: colors.surfaceContainerHighest,
               ),
@@ -142,7 +143,7 @@ class _AssistantBubble extends StatelessWidget {
             if (message.status == MessageStatus.failed) ...[
               const SizedBox(height: AppSpacing.xs),
               _StatusChip(
-                label: message.error ?? 'Something went wrong · Retry',
+                label: message.error ?? AppConstants.genericErrorRetry,
                 color: colors.error,
                 background: colors.error.withValues(alpha: 0.08),
               ),

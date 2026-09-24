@@ -12,6 +12,7 @@ abstract final class AppColors {
   static const Color accentDeep = Color(0xFF1F1E1B);
 
   static const Color error = Color(0xFFB42318);
+  static const Color avatarBlue = Color(0xFF3B82F6);
 
   static const Color primary = ink;
   static const Color seed = ink;

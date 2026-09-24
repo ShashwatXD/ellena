@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/constants/app_constants.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 import 'model_selector.dart';
@@ -14,7 +15,7 @@ class ChatComposer extends StatefulWidget {
     this.onStop,
     this.isStreaming = false,
     this.enabled = true,
-    this.hintText = 'Assign a task or ask anything',
+    this.hintText = AppConstants.composerHint,
     this.placement = ComposerPlacement.docked,
   });
 
@@ -179,7 +180,7 @@ class _ChatComposerState extends State<ChatComposer>
                           ),
                         ),
                         child: _RoundIconButton(
-                          tooltip: 'Stop',
+                          tooltip: AppConstants.stopTooltip,
                           icon: Icons.stop_rounded,
                           onPressed: widget.onStop == null ? null : _stop,
                           foreground: colors.onSurface,
@@ -189,7 +190,7 @@ class _ChatComposerState extends State<ChatComposer>
                       )
                     : _RoundIconButton(
                         key: const ValueKey('send'),
-                        tooltip: 'Send',
+                            tooltip: AppConstants.sendTooltip,
                         icon: Icons.arrow_upward_rounded,
                         onPressed: _canSend ? _submit : null,
                         foreground:

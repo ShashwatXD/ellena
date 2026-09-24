@@ -64,7 +64,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       resizeToAvoidBottomInset: true,
       appBar: EllenaAppBar(
         title: Text(
-          conversation?.title ?? 'Chat',
+          conversation?.title ?? AppConstants.chatFallbackTitle,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: theme.textTheme.titleMedium,
@@ -76,7 +76,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             child: messages.isEmpty
                 ? Center(
                     child: Text(
-                      'No messages',
+                      AppConstants.noMessages,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),

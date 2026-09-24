@@ -1,3 +1,5 @@
+import '../constants/app_constants.dart';
+
 class LlmModel {
   const LlmModel({
     required this.id,
@@ -13,20 +15,20 @@ class LlmModel {
 abstract final class GeminiModels {
   static const flash20 = LlmModel(
     id: 'gemini-2.0-flash',
-    label: '2.0 Flash',
-    subtitle: 'Fast',
+    label: AppConstants.modelFlash20Label,
+    subtitle: AppConstants.modelFlash20Subtitle,
   );
 
   static const flash25 = LlmModel(
     id: 'gemini-2.5-flash',
-    label: '2.5 Flash',
-    subtitle: 'Balanced',
+    label: AppConstants.modelFlash25Label,
+    subtitle: AppConstants.modelFlash25Subtitle,
   );
 
   static const pro25 = LlmModel(
     id: 'gemini-2.5-pro',
-    label: '2.5 Pro',
-    subtitle: 'Stronger',
+    label: AppConstants.modelPro25Label,
+    subtitle: AppConstants.modelPro25Subtitle,
   );
 
   static const List<LlmModel> all = [flash20, flash25, pro25];
