@@ -2,12 +2,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:ellena/app.dart';
-import 'package:ellena/storage/storage_service.dart';
+import 'package:ellena/core/config/app_config.dart';
+import 'package:ellena/data/storage/storage_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() async {
+    await AppConfig.load();
     await StorageService.instance.initForTest('.dart_tool/test_hive');
   });
 
@@ -17,6 +19,7 @@ void main() {
         child: EllenaApp(),
       ),
     );
-    expect(find.text('Ellena'), findsOneWidget);
+    expect(find.text('ellena'), findsOneWidget);
+    expect(find.text('What can I do for you?'), findsOneWidget);
   });
 }

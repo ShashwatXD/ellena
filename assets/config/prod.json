@@ -1,0 +1,7 @@
+{
+  "FLAVOR": "prod",
+  "APP_NAME": "Ellena",
+  "API_BASE_URL": "https://generativelanguage.googleapis.com",
+  "GEMINI_API_KEY": "",
+  "ENABLE_FAKE_STREAM": "false"
+}
