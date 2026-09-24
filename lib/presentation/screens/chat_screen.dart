@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/models/message_status.dart';
 import '../providers/providers.dart';
 import '../theme/app_breakpoints.dart';
+import '../theme/app_motion.dart';
 import '../theme/app_spacing.dart';
 import '../widgets/chat_composer.dart';
 import '../widgets/ellena_app_bar.dart';
@@ -21,22 +23,50 @@ class ChatScreen extends ConsumerStatefulWidget {
 
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _scrollController = ScrollController();
+  bool _showJumpToBottom = false;
+  static const _jumpThreshold = 120.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
   }
 
-  void _scrollToBottom() {
+  bool get _isNearBottom {
+    if (!_scrollController.hasClients) return true;
+    final position = _scrollController.position;
+    return position.maxScrollExtent - position.pixels <= _jumpThreshold;
+  }
+
+  void _onScroll() {
+    final show = !_isNearBottom;
+    if (show != _showJumpToBottom) {
+      setState(() => _showJumpToBottom = show);
+    }
+  }
+
+  void _scrollToBottom({bool force = false}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
+      if (!force && !_isNearBottom && _showJumpToBottom) return;
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
+        duration: AppMotion.of(context, AppMotion.normal),
+        curve: AppMotion.standard,
       );
     });
+  }
+
+  void _jumpToBottom() {
+    HapticFeedback.selectionClick();
+    _scrollToBottom(force: true);
   }
 
   @override
@@ -92,22 +122,38 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       ),
                     ),
                   )
-                : ListView.separated(
-                    controller: _scrollController,
-                    keyboardDismissBehavior:
-                        ScrollViewKeyboardDismissBehavior.onDrag,
-                    padding: EdgeInsets.fromLTRB(
-                      pagePad,
-                      AppSpacing.sm,
-                      pagePad,
-                      AppSpacing.lg,
-                    ),
-                    itemCount: messages.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: AppSpacing.md),
-                    itemBuilder: (context, index) {
-                      return MessageBubble(message: messages[index]);
-                    },
+                : Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      ListView.separated(
+                        controller: _scrollController,
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        padding: EdgeInsets.fromLTRB(
+                          pagePad,
+                          AppSpacing.sm,
+                          pagePad,
+                          AppSpacing.lg,
+                        ),
+                        itemCount: messages.length,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: AppSpacing.md),
+                        itemBuilder: (context, index) {
+                          return MessageBubble(message: messages[index]);
+                        },
+                      ),
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: AppSpacing.sm,
+                        child: Center(
+                          child: _JumpToBottomButton(
+                            visible: _showJumpToBottom,
+                            onPressed: _jumpToBottom,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
           ),
           ChatComposer(
@@ -125,6 +171,72 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             },
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _JumpToBottomButton extends StatelessWidget {
+  const _JumpToBottomButton({
+    required this.visible,
+    required this.onPressed,
+  });
+
+  final bool visible;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final motion = AppMotion.of(context, AppMotion.fast);
+
+    return IgnorePointer(
+      ignoring: !visible,
+      child: AnimatedScale(
+        scale: visible ? 1 : 0.85,
+        duration: motion,
+        curve: AppMotion.standard,
+        child: AnimatedOpacity(
+          opacity: visible ? 1 : 0,
+          duration: motion,
+          curve: AppMotion.standard,
+          child: Material(
+            color: colors.surface,
+            elevation: 0,
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: onPressed,
+              child: Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: colors.surface,
+                  border: Border.all(
+                    color: colors.outline,
+                    width: AppSpacing.stroke,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colors.shadow.withValues(alpha: 0.10),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Tooltip(
+                  message: AppConstants.scrollToBottomTooltip,
+                  child: Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: colors.onSurface.withValues(alpha: 0.85),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

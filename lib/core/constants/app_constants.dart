@@ -7,6 +7,7 @@ abstract final class AppConstants {
 
   static const String sendTooltip = 'Send';
   static const String stopTooltip = 'Stop';
+  static const String scrollToBottomTooltip = 'Jump to latest';
   static const String modelTooltip = 'Model';
   static const String menuTooltip = 'Menu';
   static const String newChatTooltip = 'New chat';
