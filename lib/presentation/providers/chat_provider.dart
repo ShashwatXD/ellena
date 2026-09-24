@@ -286,7 +286,9 @@ class ChatNotifier extends Notifier<ChatState> {
         ? AppConstants.stoppedLabel
         : error is DioException
             ? AppConstants.geminiRequestFailed
-            : AppConstants.genericError;
+            : error is StateError
+                ? AppConstants.mockStreamFailed
+                : AppConstants.genericError;
 
     messages[index] = messages[index].copyWith(
       status: isCancel ? MessageStatus.stopped : MessageStatus.failed,

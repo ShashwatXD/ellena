@@ -7,6 +7,7 @@ import '../../data/streaming/fake_streaming_service.dart';
 import '../../data/streaming/gemini_streaming_service.dart';
 import '../../data/streaming/streaming_service.dart';
 import 'app_config_provider.dart';
+import 'mock_stream_scenario_provider.dart';
 
 final storageServiceProvider = Provider<StorageService>((ref) {
   return StorageService.instance;
@@ -21,13 +22,20 @@ final apiRepositoryProvider = Provider<ApiRepository>((ref) {
   return ApiRepository(ref.watch(apiServiceProvider));
 });
 
-final streamingServiceProvider = Provider<StreamingService>((ref) {
+final useFakeStreamProvider = Provider<bool>((ref) {
   final config = ref.watch(appConfigProvider);
-  if (!config.enableFakeStream && config.hasGeminiKey) {
+  return config.enableFakeStream || !config.hasGeminiKey;
+});
+
+final streamingServiceProvider = Provider<StreamingService>((ref) {
+  if (!ref.watch(useFakeStreamProvider)) {
+    final config = ref.watch(appConfigProvider);
     return GeminiStreamingService(
       repository: ref.watch(apiRepositoryProvider),
       apiKey: config.geminiApiKey,
     );
   }
-  return FakeStreamingService();
+  return FakeStreamingService(
+    scenarioOf: () => ref.read(mockStreamScenarioProvider),
+  );
 });

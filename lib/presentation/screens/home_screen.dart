@@ -10,6 +10,7 @@ import '../theme/app_motion.dart';
 import '../theme/app_spacing.dart';
 import '../widgets/chat_composer.dart';
 import '../widgets/ellena_app_bar.dart';
+import '../widgets/mock_scenario_picker.dart';
 import '../widgets/suggestion_chips.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -29,6 +30,9 @@ class HomeScreen extends ConsumerWidget {
     final pagePad = AppBreakpoints.pagePadding(context);
     final gap = AppBreakpoints.sectionGap(context);
     final compact = AppBreakpoints.isCompact(context);
+    final config = ref.watch(appConfigProvider);
+    final useFake = ref.watch(useFakeStreamProvider);
+    final showMockChips = config.isDev && useFake;
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -107,10 +111,17 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     ),
                     SizedBox(height: compact ? AppSpacing.md : AppSpacing.lg),
-                    SuggestionChips(
-                      suggestions: AppConstants.homeSuggestions,
-                      onSelected: (value) => _startChat(context, ref, value),
-                    ),
+                    if (showMockChips)
+                      MockScenarioPicker(
+                        onSelected: (scenario) =>
+                            _startChat(context, ref, scenario.label),
+                      )
+                    else
+                      SuggestionChips(
+                        suggestions: AppConstants.homeSuggestions,
+                        onSelected: (value) =>
+                            _startChat(context, ref, value),
+                      ),
                   ],
                 ),
               ),

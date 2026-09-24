@@ -68,6 +68,22 @@ abstract final class AppConstants {
     (icon: Icons.sports_esports_outlined, label: 'Create games'),
   ];
 
+  static const String mockScenarioShort = 'Short';
+  static const String mockScenarioShortSub = 'Brief reply';
+  static const String mockScenarioMarkdown = 'Markdown';
+  static const String mockScenarioMarkdownSub = 'Rich demo';
+  static const String mockScenarioLong = 'Long';
+  static const String mockScenarioLongSub = 'Many chunks';
+  static const String mockScenarioSlow = 'Slow';
+  static const String mockScenarioSlowSub = 'Easy to stop';
+  static const String mockScenarioEmpty = 'Empty';
+  static const String mockScenarioEmptySub = 'No tokens';
+  static const String mockScenarioErrorEarly = 'Fail early';
+  static const String mockScenarioErrorEarlySub = 'Before tokens';
+  static const String mockScenarioErrorMid = 'Fail mid';
+  static const String mockScenarioErrorMidSub = 'After partial';
+  static const String mockStreamFailed = 'Mock stream failed';
+
   static const List<String> fakeStreamChunks = [
     '## Quick answer\n\n',
     'Here is a **markdown** demo while we wait on a live Gemini key.\n\n',
@@ -82,5 +98,51 @@ abstract final class AppConstants {
     '| Fake | Local scripted chunks |\n',
     '| Gemini | `streamGenerateContent` SSE |\n\n',
     'Ask anything else when you are ready.',
+  ];
+
+  static const List<String> mockChunksShort = [
+    'Short reply — scenario picker is working.',
+  ];
+
+  static const List<String> mockChunksSlow = [
+    'This ',
+    'stream ',
+    'is ',
+    'intentionally ',
+    'slow ',
+    'so you can tap Stop mid-flight.',
+  ];
+
+  static const List<String> mockChunksErrorEarly = [
+    'unreachable',
+  ];
+
+  static const List<String> mockChunksErrorMid = [
+    'Partial answer so far.\n\n',
+    'Next chunk arrives…\n\n',
+    'One more before the failure…\n\n',
+    'This chunk should not appear.',
+  ];
+
+  static const List<String> mockChunksLong = [
+    '## Long stream\n\n',
+    'Chunk 1 — scrolling and layout under load.\n\n',
+    'Chunk 2 — **bold**, *italic*, and `inline code`.\n\n',
+    'Chunk 3 — list start:\n',
+    '- item one\n',
+    '- item two\n',
+    '- item three\n\n',
+    'Chunk 4 — a code fence:\n\n',
+    '```\n',
+    'for (final c in chunks) yield c;\n',
+    '```\n\n',
+    'Chunk 5 — table:\n\n',
+    '| Case | Expect |\n',
+    '| --- | --- |\n',
+    '| Long | Many tokens |\n',
+    '| Stop | Partial kept |\n\n',
+    'Chunk 6 — wrapping paragraph that keeps going so the bubble grows and the list scrolls as tokens arrive during a fake stream in the Ellena trial build.\n\n',
+    'Chunk 7 — almost done.\n\n',
+    'Chunk 8 — last token. Scenario complete.',
   ];
 }

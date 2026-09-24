@@ -1,7 +1,11 @@
 import '../../core/constants/app_constants.dart';
+import '../../core/models/mock_stream_scenario.dart';
 import 'streaming_service.dart';
 
 class FakeStreamingService implements StreamingService {
+  FakeStreamingService({required this.scenarioOf});
+
+  final MockStreamScenario Function() scenarioOf;
   int _epoch = 0;
 
   @override
@@ -11,12 +15,27 @@ class FakeStreamingService implements StreamingService {
     List<({String role, String text})> history = const [],
   }) async* {
     final epoch = ++_epoch;
+    final scenario = scenarioOf();
+    final chunks = scenario.chunks;
+    final delay = scenario.chunkDelay;
+    final failAfter = scenario.failAfterYields;
 
-    for (final chunk in AppConstants.fakeStreamChunks) {
+    if (failAfter == 0) {
+      await Future<void>.delayed(delay);
       if (epoch != _epoch) return;
-      await Future<void>.delayed(const Duration(milliseconds: 220));
+      throw StateError(AppConstants.mockStreamFailed);
+    }
+
+    var yielded = 0;
+    for (final chunk in chunks) {
+      if (epoch != _epoch) return;
+      if (failAfter != null && yielded >= failAfter) {
+        throw StateError(AppConstants.mockStreamFailed);
+      }
+      await Future<void>.delayed(delay);
       if (epoch != _epoch) return;
       yield chunk;
+      yielded++;
     }
   }
 
