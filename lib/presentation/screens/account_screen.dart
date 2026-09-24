@@ -10,18 +10,17 @@ import '../theme/app_breakpoints.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
+import '../widgets/app_snack_bar.dart';
 
 class AccountScreen extends ConsumerWidget {
   const AccountScreen({super.key});
 
   void _mockTap(BuildContext context) {
     HapticFeedback.selectionClick();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(AppConstants.comingSoonMock),
-        behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: 2),
-      ),
+    AppSnackBar.show(
+      context,
+      message: AppConstants.comingSoonMock,
+      icon: Icons.schedule_rounded,
     );
   }
 
@@ -92,7 +91,7 @@ class AccountScreen extends ConsumerWidget {
                     alignment: Alignment.center,
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.avatarBlue,
+                      color: AppColors.ink,
                     ),
                     child: Text(
                       AppConstants.mockUserName[0].toUpperCase(),
@@ -224,16 +223,18 @@ class AccountScreen extends ConsumerWidget {
               await ref.read(chatProvider.notifier).deleteAllChats();
               if (!context.mounted) return;
               HapticFeedback.mediumImpact();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(AppConstants.deleteAllChatsDone),
-                  behavior: SnackBarBehavior.floating,
-                  duration: Duration(seconds: 2),
-                ),
+              AppSnackBar.show(
+                context,
+                message: AppConstants.deleteAllChatsDone,
+                icon: Icons.check_rounded,
               );
               context.go(AppRoutes.home);
             },
           ),
+          if (ref.watch(appConfigProvider).isDev) ...[
+            const SizedBox(height: AppSpacing.sm),
+            const _MockResponsesCard(),
+          ],
           ],
         ),
       ),
@@ -254,6 +255,65 @@ const _menuItems = <({IconData icon, String label})>[
     label: AppConstants.settingsIntegrations
   ),
 ];
+
+class _MockResponsesCard extends ConsumerWidget {
+  const _MockResponsesCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final enabled = ref.watch(useFakeStreamProvider);
+
+    return _SettingsCard(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.sm,
+          AppSpacing.sm,
+          AppSpacing.sm,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.science_outlined,
+              size: 22,
+              color: colors.onSurface.withValues(alpha: 0.85),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                AppConstants.mockResponsesLabel,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            Switch.adaptive(
+              value: enabled,
+              onChanged: (value) async {
+                HapticFeedback.selectionClick();
+                await ref
+                    .read(useFakeStreamProvider.notifier)
+                    .setEnabled(value);
+                if (!context.mounted) return;
+                AppSnackBar.show(
+                  context,
+                  message: value
+                      ? AppConstants.usingMockStream
+                      : AppConstants.usingGeminiStream,
+                  icon: value
+                      ? Icons.science_outlined
+                      : Icons.auto_awesome_outlined,
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _DeleteAllChatsButton extends StatelessWidget {
   const _DeleteAllChatsButton({required this.onConfirm});

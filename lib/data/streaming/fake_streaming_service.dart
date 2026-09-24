@@ -20,22 +20,18 @@ class FakeStreamingService implements StreamingService {
     final delay = scenario.chunkDelay;
     final failAfter = scenario.failAfterYields;
 
-    if (failAfter == 0) {
-      await Future<void>.delayed(delay);
-      if (epoch != _epoch) return;
-      throw StateError(AppConstants.mockStreamFailed);
-    }
-
     var yielded = 0;
-    for (final chunk in chunks) {
+    while (true) {
       if (epoch != _epoch) return;
       if (failAfter != null && yielded >= failAfter) {
+        await Future<void>.delayed(delay);
+        if (epoch != _epoch) return;
         throw StateError(AppConstants.mockStreamFailed);
       }
+      if (yielded >= chunks.length) return;
       await Future<void>.delayed(delay);
       if (epoch != _epoch) return;
-      yield chunk;
-      yielded++;
+      yield chunks[yielded++];
     }
   }
 

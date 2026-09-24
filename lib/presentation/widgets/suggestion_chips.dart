@@ -11,10 +11,12 @@ class SuggestionChips extends StatelessWidget {
     super.key,
     required this.suggestions,
     required this.onSelected,
+    this.selectedLabel,
   });
 
   final List<({IconData icon, String label})> suggestions;
   final ValueChanged<String> onSelected;
+  final String? selectedLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +34,7 @@ class SuggestionChips extends StatelessWidget {
               index: i,
               icon: suggestions[i].icon,
               label: suggestions[i].label,
+              selected: selectedLabel == suggestions[i].label,
               onSelected: () => onSelected(suggestions[i].label),
             ),
         ],
@@ -46,12 +49,14 @@ class _SuggestionChip extends StatefulWidget {
     required this.icon,
     required this.label,
     required this.onSelected,
+    this.selected = false,
   });
 
   final int index;
   final IconData icon;
   final String label;
   final VoidCallback onSelected;
+  final bool selected;
 
   @override
   State<_SuggestionChip> createState() => _SuggestionChipState();
@@ -86,17 +91,25 @@ class _SuggestionChipState extends State<_SuggestionChip>
     final colors = theme.colorScheme;
     final motion = AppMotion.of(context, AppMotion.fast);
     final reduce = MediaQuery.disableAnimationsOf(context);
+    final selected = widget.selected;
 
     final chip = AnimatedScale(
       scale: _pressed ? 0.96 : 1,
       duration: motion,
       curve: AppMotion.standard,
       child: Material(
-        color: colors.surface,
+        color: selected
+            ? colors.onSurface.withValues(alpha: 0.08)
+            : colors.surface,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.pill),
-          side: BorderSide(color: colors.outline, width: AppSpacing.stroke),
+          side: BorderSide(
+            color: selected
+                ? colors.onSurface.withValues(alpha: 0.45)
+                : colors.outline,
+            width: selected ? 1.25 : AppSpacing.stroke,
+          ),
         ),
         child: InkWell(
           borderRadius: BorderRadius.circular(AppRadii.pill),
@@ -120,7 +133,9 @@ class _SuggestionChipState extends State<_SuggestionChip>
                 const SizedBox(width: 8),
                 Text(
                   widget.label,
-                  style: theme.textTheme.labelLarge,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  ),
                 ),
               ],
             ),

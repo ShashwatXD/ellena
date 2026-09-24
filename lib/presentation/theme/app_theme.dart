@@ -104,13 +104,10 @@ abstract final class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor:
-            isLight ? AppColors.ink : AppColors.surfaceElevatedDark,
-        contentTextStyle: textTheme.bodyMedium?.copyWith(
-          color: isLight ? AppColors.canvas : AppColors.onDark,
-        ),
-        shape: RoundedRectangleBorder(borderRadius: radiusMd),
+        backgroundColor: Colors.transparent,
         elevation: 0,
+        contentTextStyle: textTheme.bodyMedium?.copyWith(color: onSurface),
+        shape: RoundedRectangleBorder(borderRadius: radiusMd),
       ),
       dividerTheme: DividerThemeData(
         color: outline,

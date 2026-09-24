@@ -31,16 +31,6 @@ enum MockStreamScenario {
         MockStreamScenario.errorMid => AppConstants.mockScenarioErrorMid,
       };
 
-  String get subtitle => switch (this) {
-        MockStreamScenario.short => AppConstants.mockScenarioShortSub,
-        MockStreamScenario.markdown => AppConstants.mockScenarioMarkdownSub,
-        MockStreamScenario.long => AppConstants.mockScenarioLongSub,
-        MockStreamScenario.slow => AppConstants.mockScenarioSlowSub,
-        MockStreamScenario.empty => AppConstants.mockScenarioEmptySub,
-        MockStreamScenario.errorEarly => AppConstants.mockScenarioErrorEarlySub,
-        MockStreamScenario.errorMid => AppConstants.mockScenarioErrorMidSub,
-      };
-
   Duration get chunkDelay => switch (this) {
         MockStreamScenario.short => const Duration(milliseconds: 90),
         MockStreamScenario.markdown => const Duration(milliseconds: 220),
@@ -69,4 +59,11 @@ enum MockStreamScenario {
       };
 
   static const List<MockStreamScenario> all = MockStreamScenario.values;
+
+  static MockStreamScenario byLabel(String label) {
+    for (final scenario in all) {
+      if (scenario.label == label) return scenario;
+    }
+    return markdown;
+  }
 }

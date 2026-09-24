@@ -5,5 +5,6 @@ abstract final class StorageKeys {
   static const String refreshToken = 'refresh_token';
 
   static const String themeMode = 'theme_mode';
+  static const String mockStreamEnabled = 'mock_stream_enabled';
   static const String onboardingDone = 'onboarding_done';
 }

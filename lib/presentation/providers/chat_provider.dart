@@ -1,12 +1,13 @@
 import 'dart:async';
 
-import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/models/conversation.dart';
 import '../../core/models/message.dart';
 import '../../core/models/message_status.dart';
+import '../../data/api/api_exception.dart';
+import '../../data/streaming/streaming_service.dart';
 import 'chat_state.dart';
 import 'data_providers.dart';
 import 'model_provider.dart';
@@ -16,6 +17,7 @@ final chatProvider = NotifierProvider<ChatNotifier, ChatState>(ChatNotifier.new)
 class ChatNotifier extends Notifier<ChatState> {
   final Map<String, StreamSubscription<String>> _subscriptions = {};
   final Set<String> _activeMessageIds = {};
+  StreamingService? _liveService;
 
   @override
   ChatState build() {
@@ -136,7 +138,7 @@ class ChatNotifier extends Notifier<ChatState> {
     final messageId = messages[index].id;
     _activeMessageIds.remove(messageId);
 
-    await ref.read(streamingServiceProvider).cancel();
+    await _liveService?.cancel();
     final subscription = _subscriptions.remove(messageId);
     await subscription?.cancel();
 
@@ -164,13 +166,55 @@ class ChatNotifier extends Notifier<ChatState> {
   }
 
   Future<void> deleteAllChats() async {
-    await ref.read(streamingServiceProvider).cancel();
+    await _liveService?.cancel();
+    _liveService = null;
     for (final subscription in _subscriptions.values) {
       await subscription.cancel();
     }
     _subscriptions.clear();
     _activeMessageIds.clear();
     state = const ChatState();
+  }
+
+  void retryMessage(String conversationId, String messageId) {
+    final messages = [...state.messagesFor(conversationId)];
+    final index = messages.indexWhere((m) => m.id == messageId);
+    if (index < 0) return;
+
+    final failed = messages[index];
+    if (failed.role != MessageRole.assistant ||
+        failed.status != MessageStatus.failed) {
+      return;
+    }
+
+    String? prompt;
+    for (var i = index - 1; i >= 0; i--) {
+      if (messages[i].role == MessageRole.user) {
+        prompt = messages[i].content;
+        break;
+      }
+    }
+    if (prompt == null || prompt.isEmpty) return;
+
+    messages[index] = failed.copyWith(
+      content: '',
+      status: MessageStatus.streaming,
+      clearError: true,
+    );
+    state = state.copyWith(
+      messagesByConversation: {
+        ...state.messagesByConversation,
+        conversationId: messages,
+      },
+    );
+
+    unawaited(
+      _beginStream(
+        conversationId: conversationId,
+        messageId: messageId,
+        prompt: prompt,
+      ),
+    );
   }
 
   Future<void> _beginStream({
@@ -202,7 +246,12 @@ class ChatNotifier extends Notifier<ChatState> {
         )
         .toList();
 
-    final service = ref.read(streamingServiceProvider);
+    final useFake = ref.read(useFakeStreamProvider);
+    final service = useFake
+        ? ref.read(fakeStreamingProvider)
+        : ref.read(geminiStreamingProvider);
+    _liveService = service;
+
     final model = ref.read(selectedModelProvider).id;
 
     try {
@@ -280,11 +329,10 @@ class ChatNotifier extends Notifier<ChatState> {
     if (index < 0) return;
     if (messages[index].status != MessageStatus.streaming) return;
 
-    final isCancel =
-        error is DioException && error.type == DioExceptionType.cancel;
+    final isCancel = error is ApiException && error.isCancel;
     final message = isCancel
         ? AppConstants.stoppedLabel
-        : error is DioException
+        : error is ApiException
             ? AppConstants.geminiRequestFailed
             : error is StateError
                 ? AppConstants.mockStreamFailed
@@ -293,9 +341,7 @@ class ChatNotifier extends Notifier<ChatState> {
     messages[index] = messages[index].copyWith(
       status: isCancel ? MessageStatus.stopped : MessageStatus.failed,
       error: isCancel ? null : message,
-      content: messages[index].content.isEmpty
-          ? message
-          : messages[index].content,
+      clearError: isCancel,
     );
     state = state.copyWith(
       messagesByConversation: {
@@ -308,6 +354,6 @@ class ChatNotifier extends Notifier<ChatState> {
   String _titleFrom(String text) {
     final cleaned = text.trim().replaceAll(RegExp(r'\s+'), ' ');
     if (cleaned.length <= 36) return cleaned;
-    return '${cleaned.substring(0, 36)}…';
+    return '${cleaned.substring(0, 36)}...';
   }
 }

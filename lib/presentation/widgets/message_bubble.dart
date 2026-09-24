@@ -1,27 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_streaming_text_markdown/flutter_streaming_text_markdown.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/models/message.dart';
 import '../../core/models/message_status.dart';
+import '../providers/providers.dart';
 import '../theme/app_breakpoints.dart';
 import '../theme/app_motion.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 
-class MessageBubble extends StatelessWidget {
+class MessageBubble extends ConsumerWidget {
   const MessageBubble({super.key, required this.message});
 
   final Message message;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final isUser = message.role == MessageRole.user;
     final maxWidth = MediaQuery.sizeOf(context).width *
         AppBreakpoints.messageMaxFraction(isUser: isUser);
     final motion = AppMotion.of(context, AppMotion.normal);
+
+    final messages =
+        ref.watch(chatProvider).messagesFor(message.conversationId);
+    final canRetry = message.status == MessageStatus.failed &&
+        messages.isNotEmpty &&
+        messages.last.id == message.id;
 
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
@@ -48,6 +57,15 @@ class MessageBubble extends StatelessWidget {
               maxWidth: maxWidth,
               theme: theme,
               colors: colors,
+              onRetry: canRetry
+                  ? () {
+                      HapticFeedback.lightImpact();
+                      ref.read(chatProvider.notifier).retryMessage(
+                            message.conversationId,
+                            message.id,
+                          );
+                    }
+                  : null,
             ),
     );
   }
@@ -100,16 +118,19 @@ class _AssistantBubble extends StatelessWidget {
     required this.maxWidth,
     required this.theme,
     required this.colors,
+    this.onRetry,
   });
 
   final Message message;
   final double maxWidth;
   final ThemeData theme;
   final ColorScheme colors;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
     final streaming = message.status == MessageStatus.streaming;
+    final failed = message.status == MessageStatus.failed;
     final empty = message.content.isEmpty;
 
     return Align(
@@ -121,6 +142,30 @@ class _AssistantBubble extends StatelessWidget {
           children: [
             if (empty && streaming)
               const _LoadingDots()
+            else if (empty && failed)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Icon(
+                      Icons.error_outline_rounded,
+                      size: 18,
+                      color: colors.error.withValues(alpha: 0.85),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      message.error ?? AppConstants.genericError,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: colors.onSurfaceVariant,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ],
+              )
             else ...[
               StreamingTextMarkdown(
                 key: ValueKey('${message.id}-${message.status.name}'),
@@ -144,17 +189,121 @@ class _AssistantBubble extends StatelessWidget {
                 background: colors.surfaceContainerHighest,
               ),
             ],
-            if (message.status == MessageStatus.failed) ...[
-              const SizedBox(height: AppSpacing.xs),
-              _StatusChip(
-                label: message.error ?? AppConstants.genericErrorRetry,
-                color: colors.error,
-                background: colors.error.withValues(alpha: 0.08),
+            if (failed) ...[
+              const SizedBox(height: AppSpacing.sm),
+              _FailureActions(
+                showDetail: !empty,
+                detail: message.error ?? AppConstants.genericError,
+                onRetry: onRetry,
               ),
             ],
           ],
         ),
       ),
+    );
+  }
+}
+
+class _FailureActions extends StatefulWidget {
+  const _FailureActions({
+    required this.onRetry,
+    required this.detail,
+    this.showDetail = false,
+  });
+
+  final String detail;
+  final bool showDetail;
+  final VoidCallback? onRetry;
+
+  @override
+  State<_FailureActions> createState() => _FailureActionsState();
+}
+
+class _FailureActionsState extends State<_FailureActions> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final motion = AppMotion.of(context, AppMotion.fast);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (widget.showDetail)
+          Padding(
+            padding: EdgeInsets.only(
+              bottom: widget.onRetry != null ? AppSpacing.xs : 0,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.error_outline_rounded,
+                  size: 16,
+                  color: colors.error.withValues(alpha: 0.9),
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    widget.detail,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: colors.error.withValues(alpha: 0.95),
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        if (widget.onRetry != null)
+          AnimatedScale(
+            scale: _pressed ? 0.96 : 1,
+            duration: motion,
+            curve: AppMotion.standard,
+            child: Material(
+              color: colors.surface,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadii.pill),
+                side: BorderSide(
+                  color: colors.outline,
+                  width: AppSpacing.stroke,
+                ),
+              ),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(AppRadii.pill),
+                onTapDown: (_) => setState(() => _pressed = true),
+                onTapCancel: () => setState(() => _pressed = false),
+                onTapUp: (_) => setState(() => _pressed = false),
+                onTap: widget.onRetry,
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.refresh_rounded,
+                        size: 16,
+                        color: colors.onSurface.withValues(alpha: 0.9),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        AppConstants.retryLabel,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

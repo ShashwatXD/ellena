@@ -20,7 +20,7 @@ abstract final class AppConstants {
   static const String interruptedLabel = 'Interrupted';
   static const String stoppedLabel = 'Stopped';
   static const String genericError = 'Something went wrong';
-  static const String genericErrorRetry = 'Something went wrong · Retry';
+  static const String retryLabel = 'Retry';
   static const String geminiRequestFailed = 'Gemini request failed';
 
   static const String modelFlash20Label = '2.0 Flash';
@@ -43,7 +43,7 @@ abstract final class AppConstants {
   static const String upgradeLabel = 'Upgrade';
   static const String creditsLabel = 'Credits';
   static const String creditsValue = '2K';
-  static const String comingSoonMock = 'MComing soon,  for this trial.';
+  static const String comingSoonMock = 'Coming soon,  for this trial.';
 
   static const String settingsScheduledTasks = 'Scheduled tasks';
   static const String settingsKnowledge = 'Knowledge';
@@ -56,10 +56,14 @@ abstract final class AppConstants {
   static const String deleteAllChatsLabel = 'Delete all chats';
   static const String deleteAllChatsTitle = 'Delete all chats?';
   static const String deleteAllChatsBody =
-      'This removes every conversation from this device. This can’t be undone.';
+      'This removes every conversation from this device. This can\'t be undone.';
   static const String deleteAllChatsConfirm = 'Delete';
   static const String deleteAllChatsCancel = 'Cancel';
   static const String deleteAllChatsDone = 'All chats deleted';
+
+  static const String mockResponsesLabel = 'Mock responses';
+  static const String usingMockStream = 'Using mock stream';
+  static const String usingGeminiStream = 'Using Gemini';
 
   static const List<({IconData icon, String label})> homeSuggestions = [
     (icon: Icons.slideshow_outlined, label: 'Create slides'),
@@ -69,19 +73,12 @@ abstract final class AppConstants {
   ];
 
   static const String mockScenarioShort = 'Short';
-  static const String mockScenarioShortSub = 'Brief reply';
   static const String mockScenarioMarkdown = 'Markdown';
-  static const String mockScenarioMarkdownSub = 'Rich demo';
   static const String mockScenarioLong = 'Long';
-  static const String mockScenarioLongSub = 'Many chunks';
   static const String mockScenarioSlow = 'Slow';
-  static const String mockScenarioSlowSub = 'Easy to stop';
   static const String mockScenarioEmpty = 'Empty';
-  static const String mockScenarioEmptySub = 'No tokens';
   static const String mockScenarioErrorEarly = 'Fail early';
-  static const String mockScenarioErrorEarlySub = 'Before tokens';
   static const String mockScenarioErrorMid = 'Fail mid';
-  static const String mockScenarioErrorMidSub = 'After partial';
   static const String mockStreamFailed = 'Mock stream failed';
 
   static const List<String> fakeStreamChunks = [
@@ -101,7 +98,7 @@ abstract final class AppConstants {
   ];
 
   static const List<String> mockChunksShort = [
-    'Short reply — scenario picker is working.',
+    'Short reply - scenario picker is working.',
   ];
 
   static const List<String> mockChunksSlow = [
@@ -119,30 +116,71 @@ abstract final class AppConstants {
 
   static const List<String> mockChunksErrorMid = [
     'Partial answer so far.\n\n',
-    'Next chunk arrives…\n\n',
-    'One more before the failure…\n\n',
+    'Next chunk arrives...\n\n',
+    'One more before the failure...\n\n',
     'This chunk should not appear.',
   ];
 
   static const List<String> mockChunksLong = [
     '## Long stream\n\n',
-    'Chunk 1 — scrolling and layout under load.\n\n',
-    'Chunk 2 — **bold**, *italic*, and `inline code`.\n\n',
-    'Chunk 3 — list start:\n',
-    '- item one\n',
-    '- item two\n',
-    '- item three\n\n',
-    'Chunk 4 — a code fence:\n\n',
-    '```\n',
-    'for (final c in chunks) yield c;\n',
+    'This scenario is meant to stress scroll, markdown, and bubble growth while tokens arrive.\n\n',
+    '### 1. Formatting\n\n',
+    'Here is **bold**, *italic*, ~~strike~~, and `inline code` in one paragraph so the renderer stays busy.\n\n',
+    '### 2. Lists\n\n',
+    'Ordered steps:\n',
+    '1. Open the chat\n',
+    '2. Pick **Long**\n',
+    '3. Watch the list scroll as chunks land\n',
+    '4. Try Stop mid-stream if you want a partial\n\n',
+    'Unordered extras:\n',
+    '- sticky bottom behavior\n',
+    '- markdown tables\n',
+    '- nested bullets\n',
+    '  - level two\n',
+    '  - another level two\n',
+    '- code fences\n\n',
+    '### 3. Code sample\n\n',
+    '```dart\n',
+    'Stream<String> streamReply({\n',
+    '  required String prompt,\n',
+    '  required String model,\n',
+    '}) async* {\n',
+    '  for (final chunk in chunks) {\n',
+    '    await Future.delayed(delay);\n',
+    '    yield chunk;\n',
+    '  }\n',
+    '}\n',
     '```\n\n',
-    'Chunk 5 — table:\n\n',
-    '| Case | Expect |\n',
-    '| --- | --- |\n',
-    '| Long | Many tokens |\n',
-    '| Stop | Partial kept |\n\n',
-    'Chunk 6 — wrapping paragraph that keeps going so the bubble grows and the list scrolls as tokens arrive during a fake stream in the Ellena trial build.\n\n',
-    'Chunk 7 — almost done.\n\n',
-    'Chunk 8 — last token. Scenario complete.',
+    '### 4. Comparison table\n\n',
+    '| Case | Expect | Notes |\n',
+    '| --- | --- | --- |\n',
+    '| Long | Many tokens | Scroll stress |\n',
+    '| Stop | Partial kept | Same slot as Send |\n',
+    '| Retry | Latest fail only | Tip of the thread |\n',
+    '| Fake | Local script | No network |\n',
+    '| Gemini | SSE | Real path |\n\n',
+    '### 5. Long prose A\n\n',
+    'Ellena keeps the surface calm while the stream path does the hard work. ',
+    'As each chunk arrives the assistant bubble grows, the list should stick near the bottom, ',
+    'and the composer stays usable with keyboard and safe areas on compact phones.\n\n',
+    '### 6. Blockquote\n\n',
+    '> Small polished slice beats a wide broken feature list.\n\n',
+    '### 7. Long prose B\n\n',
+    'When you leave this running you should see headings, lists, a fence, a table, and enough ',
+    'wrapping text that a 360dp viewport needs to scroll. That is the point of this mock: ',
+    'not clever copy, just volume and structure under a fake stream.\n\n',
+    '### 8. Checklist\n\n',
+    '- [x] Markdown headings\n',
+    '- [x] Nested lists\n',
+    '- [x] Code fence\n',
+    '- [x] Table\n',
+    '- [ ] Live Gemini (toggle mock off in Settings)\n\n',
+    '### 9. Long prose C\n\n',
+    'One more stretch paragraph so the bubble keeps expanding: layout tokens, restrained motion, ',
+    'send and stop in the same slot, loading dots before the first token, and interrupt that freezes ',
+    'whatever already arrived without flushing the rest of the script.\n\n',
+    '### 10. Closing\n\n',
+    'Chunk near the end - almost done.\n\n',
+    'Final token - long scenario complete. You can send again or switch scenarios on home.',
   ];
 }

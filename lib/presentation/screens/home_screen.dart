@@ -30,9 +30,7 @@ class HomeScreen extends ConsumerWidget {
     final pagePad = AppBreakpoints.pagePadding(context);
     final gap = AppBreakpoints.sectionGap(context);
     final compact = AppBreakpoints.isCompact(context);
-    final config = ref.watch(appConfigProvider);
-    final useFake = ref.watch(useFakeStreamProvider);
-    final showMockChips = config.isDev && useFake;
+    final showMockChips = ref.watch(useFakeStreamProvider);
 
     return Scaffold(
       resizeToAvoidBottomInset: true,

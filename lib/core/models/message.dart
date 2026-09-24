@@ -23,6 +23,7 @@ class Message {
     String? content,
     MessageStatus? status,
     String? error,
+    bool clearError = false,
   }) {
     return Message(
       id: id,
@@ -31,7 +32,7 @@ class Message {
       content: content ?? this.content,
       status: status ?? this.status,
       createdAt: createdAt,
-      error: error,
+      error: clearError ? null : (error ?? this.error),
     );
   }
 }
