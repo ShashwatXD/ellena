@@ -11,7 +11,8 @@ abstract final class AppTheme {
 
   static ThemeData _build(Brightness brightness) {
     final isLight = brightness == Brightness.light;
-    final background = isLight ? AppColors.backgroundLight : AppColors.backgroundDark;
+    final background =
+        isLight ? AppColors.backgroundLight : AppColors.backgroundDark;
     final surface = isLight ? AppColors.surfaceLight : AppColors.surfaceDark;
     final onSurface = isLight ? AppColors.ink : AppColors.onDark;
     final muted = AppColors.inkMuted;
@@ -34,10 +35,12 @@ abstract final class AppTheme {
       surface: surface,
       onSurface: onSurface,
       onSurfaceVariant: muted,
+      surfaceContainerHighest:
+          isLight ? AppColors.accentSoft : AppColors.surfaceElevatedDark,
       outline: outline,
       outlineVariant: outline,
-      shadow: AppColors.ink.withValues(alpha: 0.12),
-      scrim: AppColors.ink.withValues(alpha: 0.4),
+      shadow: AppColors.ink.withValues(alpha: isLight ? 0.10 : 0.45),
+      scrim: AppColors.ink.withValues(alpha: 0.45),
       inverseSurface: isLight ? AppColors.ink : AppColors.mist,
       onInverseSurface: isLight ? AppColors.mist : AppColors.ink,
       inversePrimary: AppColors.accentSoft,
@@ -79,6 +82,13 @@ abstract final class AppTheme {
         titleTextStyle: textTheme.titleLarge,
         toolbarHeight: 56,
       ),
+      drawerTheme: DrawerThemeData(
+        backgroundColor: surface,
+        scrimColor: AppColors.ink.withValues(alpha: isLight ? 0.28 : 0.55),
+        elevation: 0,
+        shadowColor: Colors.transparent,
+        shape: const RoundedRectangleBorder(),
+      ),
       cardTheme: CardThemeData(
         color: surface,
         elevation: 0,
@@ -86,6 +96,21 @@ abstract final class AppTheme {
           borderRadius: radiusLg,
           side: BorderSide(color: outline),
         ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: surface,
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: radiusLg),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor:
+            isLight ? AppColors.ink : AppColors.surfaceElevatedDark,
+        contentTextStyle: textTheme.bodyMedium?.copyWith(
+          color: isLight ? AppColors.canvas : AppColors.onDark,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: radiusMd),
+        elevation: 0,
       ),
       dividerTheme: DividerThemeData(
         color: outline,
@@ -113,7 +138,7 @@ abstract final class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: AppColors.accent,
+          foregroundColor: onSurface,
           textStyle: textTheme.labelLarge,
         ),
       ),
@@ -122,7 +147,8 @@ abstract final class AppTheme {
         fillColor: surface,
         hintStyle: textTheme.bodyMedium?.copyWith(color: muted),
         labelStyle: textTheme.bodyMedium?.copyWith(color: muted),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: radiusMd,
           borderSide: BorderSide(color: outline),
@@ -133,7 +159,10 @@ abstract final class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: radiusMd,
-          borderSide: const BorderSide(color: AppColors.accent, width: 1.5),
+          borderSide: BorderSide(
+            color: onSurface.withValues(alpha: 0.45),
+            width: 1.5,
+          ),
         ),
       ),
       chipTheme: ChipThemeData(
@@ -146,6 +175,15 @@ abstract final class AppTheme {
         backgroundColor: AppColors.accent,
         foregroundColor: AppColors.canvas,
         elevation: 0,
+      ),
+      listTileTheme: ListTileThemeData(
+        iconColor: onSurface,
+        textColor: onSurface,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: onSurface,
+        circularTrackColor: outline,
       ),
     );
   }

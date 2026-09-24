@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../theme/app_breakpoints.dart';
+import '../theme/app_motion.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 
@@ -17,17 +19,20 @@ class SuggestionChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+      padding: EdgeInsets.symmetric(
+        horizontal: AppBreakpoints.pagePadding(context),
+      ),
       child: Wrap(
         spacing: AppSpacing.xs,
         runSpacing: AppSpacing.xs,
         alignment: WrapAlignment.center,
         children: [
-          for (final suggestion in suggestions)
+          for (var i = 0; i < suggestions.length; i++)
             _SuggestionChip(
-              icon: suggestion.icon,
-              label: suggestion.label,
-              onSelected: () => onSelected(suggestion.label),
+              index: i,
+              icon: suggestions[i].icon,
+              label: suggestions[i].label,
+              onSelected: () => onSelected(suggestions[i].label),
             ),
         ],
       ),
@@ -37,11 +42,13 @@ class SuggestionChips extends StatelessWidget {
 
 class _SuggestionChip extends StatefulWidget {
   const _SuggestionChip({
+    required this.index,
     required this.icon,
     required this.label,
     required this.onSelected,
   });
 
+  final int index;
   final IconData icon;
   final String label;
   final VoidCallback onSelected;
@@ -50,18 +57,40 @@ class _SuggestionChip extends StatefulWidget {
   State<_SuggestionChip> createState() => _SuggestionChipState();
 }
 
-class _SuggestionChipState extends State<_SuggestionChip> {
+class _SuggestionChipState extends State<_SuggestionChip>
+    with SingleTickerProviderStateMixin {
   bool _pressed = false;
+  late final AnimationController _enter;
+
+  @override
+  void initState() {
+    super.initState();
+    _enter = AnimationController(
+      vsync: this,
+      duration: AppMotion.emphasis,
+    );
+    Future<void>.delayed(Duration(milliseconds: 40 * widget.index), () {
+      if (mounted) _enter.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _enter.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final motion = AppMotion.of(context, AppMotion.fast);
+    final reduce = MediaQuery.disableAnimationsOf(context);
 
-    return AnimatedScale(
-      scale: _pressed ? 0.97 : 1,
-      duration: const Duration(milliseconds: 120),
-      curve: Curves.easeOutCubic,
+    final chip = AnimatedScale(
+      scale: _pressed ? 0.96 : 1,
+      duration: motion,
+      curve: AppMotion.standard,
       child: Material(
         color: colors.surface,
         elevation: 0,
@@ -97,6 +126,19 @@ class _SuggestionChipState extends State<_SuggestionChip> {
             ),
           ),
         ),
+      ),
+    );
+
+    if (reduce) return chip;
+
+    return FadeTransition(
+      opacity: CurvedAnimation(parent: _enter, curve: AppMotion.standard),
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.12),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(parent: _enter, curve: AppMotion.standard)),
+        child: chip,
       ),
     );
   }

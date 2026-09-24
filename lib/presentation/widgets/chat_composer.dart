@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../theme/app_breakpoints.dart';
+import '../theme/app_motion.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 import 'model_selector.dart';
@@ -92,25 +94,31 @@ class _ChatComposerState extends State<ChatComposer>
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final focused = _focusNode.hasFocus;
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final controlsEnabled = widget.enabled && !widget.isStreaming;
+    final motion = AppMotion.of(context, AppMotion.normal);
 
     final field = AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOutCubic,
+      duration: motion,
+      curve: AppMotion.standard,
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(_isHero ? AppRadii.xl : AppRadii.lg),
         border: Border.all(
           color: focused
-              ? colors.onSurface.withValues(alpha: 0.35)
-              : colors.outline.withValues(alpha: 0.85),
-          width: focused ? 1.25 : AppSpacing.stroke,
+              ? colors.onSurface.withValues(alpha: 0.38)
+              : colors.outline.withValues(alpha: 0.9),
+          width: focused ? 1.35 : AppSpacing.stroke,
         ),
         boxShadow: [
           BoxShadow(
-            color: colors.shadow.withValues(alpha: _isHero ? 0.08 : 0.04),
-            blurRadius: _isHero ? 28 : 16,
+            color: colors.shadow.withValues(
+              alpha: focused
+                  ? (_isHero ? 0.12 : 0.08)
+                  : (_isHero ? 0.07 : 0.04),
+            ),
+            blurRadius: focused
+                ? (_isHero ? 32 : 22)
+                : (_isHero ? 26 : 14),
             offset: Offset(0, _isHero ? 10 : 4),
           ),
         ],
@@ -120,56 +128,67 @@ class _ChatComposerState extends State<ChatComposer>
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: _controller,
-                    focusNode: _focusNode,
-                    enabled: controlsEnabled,
-                    minLines: _isHero ? 2 : 1,
-                    maxLines: 6,
-                    textInputAction: TextInputAction.newline,
-                    onChanged: (_) => setState(() {}),
-                    style: theme.textTheme.bodyLarge,
-                    cursorColor: colors.onSurface,
-                    decoration: InputDecoration(
-                      hintText: widget.hintText,
-                      hintStyle: theme.textTheme.bodyLarge?.copyWith(
-                        color: colors.onSurfaceVariant.withValues(alpha: 0.85),
+              child: AnimatedSize(
+                duration: motion,
+                curve: AppMotion.standard,
+                alignment: Alignment.topCenter,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: _controller,
+                      focusNode: _focusNode,
+                      enabled: controlsEnabled,
+                      minLines: _isHero ? 2 : 1,
+                      maxLines: 6,
+                      textInputAction: TextInputAction.newline,
+                      onChanged: (_) => setState(() {}),
+                      style: theme.textTheme.bodyLarge,
+                      cursorColor: colors.onSurface,
+                      decoration: InputDecoration(
+                        hintText: widget.hintText,
+                        hintStyle: theme.textTheme.bodyLarge?.copyWith(
+                          color: colors.onSurfaceVariant.withValues(alpha: 0.85),
+                        ),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        disabledBorder: InputBorder.none,
+                        filled: false,
+                        contentPadding: EdgeInsets.fromLTRB(
+                          AppSpacing.md,
+                          _isHero ? 16 : 14,
+                          AppSpacing.sm,
+                          6,
+                        ),
                       ),
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      disabledBorder: InputBorder.none,
-                      filled: false,
-                      contentPadding: EdgeInsets.fromLTRB(
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
                         AppSpacing.md,
-                        _isHero ? 16 : 14,
+                        0,
                         AppSpacing.sm,
-                        6,
+                        AppSpacing.sm,
                       ),
+                      child: ModelSelector(enabled: controlsEnabled),
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.md,
-                      0,
-                      AppSpacing.sm,
-                      AppSpacing.sm,
-                    ),
-                    child: ModelSelector(enabled: controlsEnabled),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             Padding(
               padding: const EdgeInsets.only(right: AppSpacing.xs),
               child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 180),
-                switchInCurve: Curves.easeOutCubic,
-                switchOutCurve: Curves.easeInCubic,
+                duration: motion,
+                switchInCurve: AppMotion.enter,
+                switchOutCurve: AppMotion.exit,
+                transitionBuilder: (child, animation) {
+                  return AppMotion.scaleFadeTransition(
+                    animation: animation,
+                    child: child,
+                  );
+                },
                 child: widget.isStreaming
                     ? FadeTransition(
                         key: const ValueKey('stop'),
@@ -190,7 +209,7 @@ class _ChatComposerState extends State<ChatComposer>
                       )
                     : _RoundIconButton(
                         key: const ValueKey('send'),
-                            tooltip: AppConstants.sendTooltip,
+                        tooltip: AppConstants.sendTooltip,
                         icon: Icons.arrow_upward_rounded,
                         onPressed: _canSend ? _submit : null,
                         foreground:
@@ -198,6 +217,7 @@ class _ChatComposerState extends State<ChatComposer>
                         filled: true,
                         fillColor: _canSend ? colors.primary : colors.outline,
                         dimWhenDisabled: false,
+                        emphasize: _canSend,
                       ),
               ),
             ),
@@ -208,32 +228,35 @@ class _ChatComposerState extends State<ChatComposer>
 
     if (_isHero) {
       return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
+        padding: EdgeInsets.symmetric(
+          horizontal: AppBreakpoints.pagePadding(context),
+        ),
         child: field,
       );
     }
 
-    return AnimatedPadding(
-      duration: const Duration(milliseconds: 160),
-      curve: Curves.easeOutCubic,
-      padding: EdgeInsets.only(bottom: bottomInset > 0 ? 0 : 0),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md,
-            AppSpacing.xs,
-            AppSpacing.md,
-            AppSpacing.sm,
-          ),
-          child: field,
+    return SafeArea(
+      top: false,
+      left: false,
+      right: false,
+      bottom: true,
+      minimum: EdgeInsets.only(
+        bottom: MediaQuery.viewPaddingOf(context).bottom > 0 ? 0 : AppSpacing.xs,
+      ),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          AppBreakpoints.pagePadding(context),
+          AppSpacing.xs,
+          AppBreakpoints.pagePadding(context),
+          AppSpacing.sm,
         ),
+        child: field,
       ),
     );
   }
 }
 
-class _RoundIconButton extends StatelessWidget {
+class _RoundIconButton extends StatefulWidget {
   const _RoundIconButton({
     super.key,
     required this.tooltip,
@@ -243,6 +266,7 @@ class _RoundIconButton extends StatelessWidget {
     this.filled = false,
     this.fillColor,
     this.dimWhenDisabled = true,
+    this.emphasize = false,
   });
 
   final String tooltip;
@@ -252,31 +276,48 @@ class _RoundIconButton extends StatelessWidget {
   final bool filled;
   final Color? fillColor;
   final bool dimWhenDisabled;
+  final bool emphasize;
+
+  @override
+  State<_RoundIconButton> createState() => _RoundIconButtonState();
+}
+
+class _RoundIconButtonState extends State<_RoundIconButton> {
+  bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
-    final enabled = onPressed != null;
-    final iconColor = !enabled && dimWhenDisabled
-        ? foreground.withValues(alpha: 0.4)
-        : foreground;
+    final enabled = widget.onPressed != null;
+    final iconColor = !enabled && widget.dimWhenDisabled
+        ? widget.foreground.withValues(alpha: 0.4)
+        : widget.foreground;
+    final motion = AppMotion.of(context, AppMotion.fast);
 
     return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: filled
-            ? (fillColor ?? Theme.of(context).colorScheme.primary)
-            : Colors.transparent,
-        shape: const CircleBorder(),
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: onPressed,
-          child: SizedBox(
-            width: AppSpacing.tap,
-            height: AppSpacing.tap,
-            child: Icon(
-              icon,
-              size: AppSpacing.icon,
-              color: iconColor,
+      message: widget.tooltip,
+      child: AnimatedScale(
+        scale: _pressed ? 0.92 : (widget.emphasize ? 1.0 : 1.0),
+        duration: motion,
+        curve: AppMotion.standard,
+        child: Material(
+          color: widget.filled
+              ? (widget.fillColor ?? Theme.of(context).colorScheme.primary)
+              : Colors.transparent,
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: widget.onPressed,
+            onTapDown: enabled ? (_) => setState(() => _pressed = true) : null,
+            onTapCancel: () => setState(() => _pressed = false),
+            onTapUp: (_) => setState(() => _pressed = false),
+            child: SizedBox(
+              width: AppSpacing.tap,
+              height: AppSpacing.tap,
+              child: Icon(
+                widget.icon,
+                size: AppSpacing.icon,
+                color: iconColor,
+              ),
             ),
           ),
         ),

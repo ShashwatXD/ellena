@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/models/message_status.dart';
 import '../providers/providers.dart';
+import '../theme/app_breakpoints.dart';
 import '../theme/app_spacing.dart';
 import '../widgets/chat_composer.dart';
 import '../widgets/ellena_app_bar.dart';
@@ -46,8 +47,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final messages = chat.messagesFor(widget.conversationId);
     final streaming = messages.any(
       (m) =>
-          m.role == MessageRole.assistant && m.status == MessageStatus.streaming,
+          m.role == MessageRole.assistant &&
+          m.status == MessageStatus.streaming,
     );
+    final pagePad = AppBreakpoints.pagePadding(context);
 
     ref.listen(chatProvider, (prev, next) {
       final nextMessages = next.messagesFor(widget.conversationId);
@@ -74,11 +77,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         children: [
           Expanded(
             child: messages.isEmpty
-                ? Center(
-                    child: Text(
-                      AppConstants.noMessages,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+                ? SafeArea(
+                    top: false,
+                    child: Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: pagePad),
+                        child: Text(
+                          AppConstants.noMessages,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
                       ),
                     ),
                   )
@@ -86,10 +96,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     controller: _scrollController,
                     keyboardDismissBehavior:
                         ScrollViewKeyboardDismissBehavior.onDrag,
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.md,
+                    padding: EdgeInsets.fromLTRB(
+                      pagePad,
                       AppSpacing.sm,
-                      AppSpacing.md,
+                      pagePad,
                       AppSpacing.lg,
                     ),
                     itemCount: messages.length,

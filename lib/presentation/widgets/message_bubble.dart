@@ -4,6 +4,8 @@ import 'package:flutter_streaming_text_markdown/flutter_streaming_text_markdown.
 import '../../core/constants/app_constants.dart';
 import '../../core/models/message.dart';
 import '../../core/models/message_status.dart';
+import '../theme/app_breakpoints.dart';
+import '../theme/app_motion.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 
@@ -17,17 +19,19 @@ class MessageBubble extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final isUser = message.role == MessageRole.user;
-    final maxWidth = MediaQuery.sizeOf(context).width * (isUser ? 0.78 : 0.92);
+    final maxWidth = MediaQuery.sizeOf(context).width *
+        AppBreakpoints.messageMaxFraction(isUser: isUser);
+    final motion = AppMotion.of(context, AppMotion.normal);
 
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
+      duration: motion,
+      curve: AppMotion.standard,
       builder: (context, value, child) {
         return Opacity(
           opacity: value,
           child: Transform.translate(
-            offset: Offset(0, (1 - value) * 6),
+            offset: Offset(0, (1 - value) * 8),
             child: child,
           ),
         );
@@ -116,7 +120,7 @@ class _AssistantBubble extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (empty && streaming)
-              const _StreamingCaret()
+              const _LoadingDots()
             else ...[
               StreamingTextMarkdown(
                 key: ValueKey('${message.id}-${message.status.name}'),
@@ -128,7 +132,7 @@ class _AssistantBubble extends StatelessWidget {
                 padding: EdgeInsets.zero,
               ),
               if (streaming) ...[
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 const _StreamingCaret(),
               ],
             ],
@@ -151,6 +155,81 @@ class _AssistantBubble extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _LoadingDots extends StatefulWidget {
+  const _LoadingDots();
+
+  @override
+  State<_LoadingDots> createState() => _LoadingDotsState();
+}
+
+class _LoadingDotsState extends State<_LoadingDots>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.onSurface;
+    final reduce = MediaQuery.disableAnimationsOf(context);
+
+    if (reduce) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(3, (_) {
+          return Container(
+            width: 6,
+            height: 6,
+            margin: const EdgeInsets.only(right: 5, top: 6),
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          );
+        }),
+      );
+    }
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(3, (index) {
+            final t = (_controller.value + index * 0.18) % 1.0;
+            final bounce = (1 - (t - 0.5).abs() * 2).clamp(0.0, 1.0);
+            return Transform.translate(
+              offset: Offset(0, -3.5 * bounce),
+              child: Opacity(
+                opacity: 0.35 + 0.65 * bounce,
+                child: Container(
+                  width: 6,
+                  height: 6,
+                  margin: const EdgeInsets.only(right: 5, top: 8),
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            );
+          }),
+        );
+      },
     );
   }
 }
@@ -184,6 +263,18 @@ class _StreamingCaretState extends State<_StreamingCaret>
   @override
   Widget build(BuildContext context) {
     final color = Theme.of(context).colorScheme.onSurface;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      return Container(
+        width: 7,
+        height: 15,
+        margin: const EdgeInsets.only(top: 3),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(2),
+        ),
+      );
+    }
+
     return FadeTransition(
       opacity: Tween<double>(begin: 0.2, end: 1).animate(_controller),
       child: Container(

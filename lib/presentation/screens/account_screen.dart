@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants/app_constants.dart';
 import '../navigation/app_routes.dart';
 import '../providers/providers.dart';
+import '../theme/app_breakpoints.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
@@ -31,8 +32,11 @@ class AccountScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        systemOverlayStyle: Theme.of(context).brightness == Brightness.dark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
         centerTitle: true,
-        leadingWidth: 64,
+        leadingWidth: AppBreakpoints.isCompact(context) ? 56 : 64,
         leading: Padding(
           padding: const EdgeInsets.only(left: AppSpacing.sm),
           child: Center(
@@ -63,14 +67,16 @@ class AccountScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md,
-          AppSpacing.sm,
-          AppSpacing.md,
-          AppSpacing.xxl,
-        ),
-        children: [
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          padding: EdgeInsets.fromLTRB(
+            AppBreakpoints.pagePadding(context),
+            AppSpacing.sm,
+            AppBreakpoints.pagePadding(context),
+            AppSpacing.xxl,
+          ),
+          children: [
           _SettingsCard(
             onTap: () => _mockTap(context),
             child: Padding(
@@ -103,6 +109,8 @@ class AccountScreen extends ConsumerWidget {
                       children: [
                         Text(
                           AppConstants.mockUserName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
@@ -110,6 +118,8 @@ class AccountScreen extends ConsumerWidget {
                         const SizedBox(height: 2),
                         Text(
                           AppConstants.mockUserEmail,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: colors.onSurfaceVariant,
                           ),
@@ -224,7 +234,8 @@ class AccountScreen extends ConsumerWidget {
               context.go(AppRoutes.home);
             },
           ),
-        ],
+          ],
+        ),
       ),
     );
   }

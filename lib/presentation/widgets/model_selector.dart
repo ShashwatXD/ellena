@@ -92,15 +92,21 @@ class ModelSelector extends ConsumerWidget {
               width: AppSpacing.stroke,
             ),
           ),
-          child: Row(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 140),
+            child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                selected.label,
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: colors.onSurface,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: -0.1,
+              Flexible(
+                child: Text(
+                  selected.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: colors.onSurface,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: -0.1,
+                  ),
                 ),
               ),
               const SizedBox(width: 2),
@@ -110,6 +116,7 @@ class ModelSelector extends ConsumerWidget {
                 color: colors.onSurfaceVariant,
               ),
             ],
+          ),
           ),
         ),
       ),

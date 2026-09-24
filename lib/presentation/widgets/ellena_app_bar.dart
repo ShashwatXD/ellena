@@ -31,6 +31,9 @@ class EllenaAppBar extends StatelessWidget implements PreferredSizeWidget {
         : '?';
 
     return AppBar(
+      systemOverlayStyle: Theme.of(context).brightness == Brightness.dark
+          ? SystemUiOverlayStyle.light
+          : SystemUiOverlayStyle.dark,
       leading: IconButton(
         tooltip: AppConstants.menuTooltip,
         onPressed: () {

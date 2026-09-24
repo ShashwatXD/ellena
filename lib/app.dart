@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'presentation/navigation/app_router.dart';
 import 'presentation/providers/providers.dart';
+import 'presentation/theme/app_motion.dart';
 import 'presentation/theme/app_theme.dart';
 
 class EllenaApp extends ConsumerWidget {
@@ -18,8 +19,8 @@ class EllenaApp extends ConsumerWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: themeMode,
-      themeAnimationDuration: const Duration(milliseconds: 180),
-      themeAnimationCurve: Curves.easeOutCubic,
+      themeAnimationDuration: AppMotion.theme,
+      themeAnimationCurve: AppMotion.standard,
       routerConfig: appRouter,
       debugShowCheckedModeBanner: false,
     );

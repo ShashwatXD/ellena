@@ -24,6 +24,8 @@ class ChatDrawer extends ConsumerWidget {
       backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(),
       child: SafeArea(
+        left: false,
+        right: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
