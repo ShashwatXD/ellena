@@ -2,15 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/constants/app_constants.dart';
-import '../../core/models/message_status.dart';
-import '../providers/providers.dart';
-import '../theme/app_breakpoints.dart';
-import '../theme/app_motion.dart';
-import '../theme/app_spacing.dart';
-import '../widgets/chat_composer.dart';
-import '../widgets/ellena_app_bar.dart';
-import '../widgets/message_bubble.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../../core/models/message_status.dart';
+import '../../providers/providers.dart';
+import '../../theme/app_breakpoints.dart';
+import '../../theme/app_motion.dart';
+import '../../theme/app_spacing.dart';
+import '../../common_widgets/chat_composer/chat_composer.dart';
+import '../../common_widgets/app_top_bar.dart';
+import '../../common_widgets/message_bubble/message_bubble.dart';
+import 'widgets/jump_to_bottom_button.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key, required this.conversationId});
@@ -95,7 +96,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      appBar: EllenaAppBar(
+      appBar: AppTopBar(
         title: Text(
           conversation?.title ?? AppConstants.chatFallbackTitle,
           maxLines: 1,
@@ -147,7 +148,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         right: 0,
                         bottom: AppSpacing.sm,
                         child: Center(
-                          child: _JumpToBottomButton(
+                          child: JumpToBottomButton(
                             visible: _showJumpToBottom,
                             onPressed: _jumpToBottom,
                           ),
@@ -171,72 +172,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             },
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _JumpToBottomButton extends StatelessWidget {
-  const _JumpToBottomButton({
-    required this.visible,
-    required this.onPressed,
-  });
-
-  final bool visible;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final motion = AppMotion.of(context, AppMotion.fast);
-
-    return IgnorePointer(
-      ignoring: !visible,
-      child: AnimatedScale(
-        scale: visible ? 1 : 0.85,
-        duration: motion,
-        curve: AppMotion.standard,
-        child: AnimatedOpacity(
-          opacity: visible ? 1 : 0,
-          duration: motion,
-          curve: AppMotion.standard,
-          child: Material(
-            color: colors.surface,
-            elevation: 0,
-            shape: const CircleBorder(),
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: onPressed,
-              child: Container(
-                width: 40,
-                height: 40,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: colors.surface,
-                  border: Border.all(
-                    color: colors.outline,
-                    width: AppSpacing.stroke,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: colors.shadow.withValues(alpha: 0.10),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Tooltip(
-                  message: AppConstants.scrollToBottomTooltip,
-                  child: Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    color: colors.onSurface.withValues(alpha: 0.85),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

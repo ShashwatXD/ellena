@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/models/mock_stream_scenario.dart';
-import '../providers/providers.dart';
-import 'suggestion_chips.dart';
+import '../../../../core/models/mock_stream_scenario.dart';
+import '../../../providers/providers.dart';
+import '../../../common_widgets/suggestion_chips.dart';
 
 class MockScenarioPicker extends ConsumerWidget {
   const MockScenarioPicker({

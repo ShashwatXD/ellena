@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/constants/app_constants.dart';
-import '../providers/providers.dart';
-import '../theme/app_breakpoints.dart';
-import '../theme/app_motion.dart';
-import '../theme/app_spacing.dart';
-import '../widgets/chat_composer.dart';
-import '../widgets/ellena_app_bar.dart';
-import '../widgets/mock_scenario_picker.dart';
-import '../widgets/suggestion_chips.dart';
-import 'chat_screen.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../providers/providers.dart';
+import '../../theme/app_breakpoints.dart';
+import '../../theme/app_motion.dart';
+import '../../theme/app_spacing.dart';
+import '../../common_widgets/chat_composer/chat_composer.dart';
+import '../../common_widgets/app_top_bar.dart';
+import 'widgets/mock_scenario_picker.dart';
+import '../../common_widgets/suggestion_chips.dart';
+import '../chat/chat_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -39,7 +39,7 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      appBar: EllenaAppBar(
+      appBar: AppTopBar(
         title: Text(
           AppConstants.appName.toLowerCase(),
           maxLines: 1,

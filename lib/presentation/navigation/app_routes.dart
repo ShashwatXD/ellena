@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../screens/account_screen.dart';
-import '../screens/chat_screen.dart';
-import '../screens/home_screen.dart';
-import '../widgets/chat_shell.dart';
+import '../screens/account/account_screen.dart';
+import '../screens/chat/chat_screen.dart';
+import '../screens/home/home_screen.dart';
+import '../common_widgets/chat_shell.dart';
 
 abstract final class AppRoutes {
   static const String home = '/';

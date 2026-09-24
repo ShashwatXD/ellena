@@ -7,8 +7,8 @@ import '../navigation/app_routes.dart';
 import '../theme/app_spacing.dart';
 import 'chat_shell.dart';
 
-class EllenaAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const EllenaAppBar({
+class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
+  const AppTopBar({
     super.key,
     required this.title,
     this.actions,
