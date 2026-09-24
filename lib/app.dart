@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'navigation/app_router.dart';
-import 'providers/theme_mode_provider.dart';
-import 'theme/app_theme.dart';
-import 'utils/app_constants.dart';
+import 'core/constants/app_constants.dart';
+import 'presentation/navigation/app_router.dart';
+import 'presentation/providers/theme_mode_provider.dart';
+import 'presentation/theme/app_theme.dart';
 
 class EllenaApp extends ConsumerWidget {
   const EllenaApp({super.key});
