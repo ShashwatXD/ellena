@@ -246,10 +246,7 @@ class ChatNotifier extends Notifier<ChatState> {
         )
         .toList();
 
-    final useFake = ref.read(useFakeStreamProvider);
-    final service = useFake
-        ? ref.read(fakeStreamingProvider)
-        : ref.read(geminiStreamingProvider);
+    final service = ref.read(streamingServiceProvider);
     _liveService = service;
 
     final model = ref.read(selectedModelProvider).id;

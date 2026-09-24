@@ -231,7 +231,7 @@ class AccountScreen extends ConsumerWidget {
               context.go(AppRoutes.home);
             },
           ),
-          if (ref.watch(appConfigProvider).isDev) ...[
+          if (ref.watch(mockControlsAvailableProvider)) ...[
             const SizedBox(height: AppSpacing.sm),
             const _MockResponsesCard(),
           ],

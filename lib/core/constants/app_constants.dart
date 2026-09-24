@@ -21,7 +21,7 @@ abstract final class AppConstants {
   static const String stoppedLabel = 'Stopped';
   static const String genericError = 'Something went wrong';
   static const String retryLabel = 'Retry';
-  static const String geminiRequestFailed = 'Gemini request failed';
+  static const String geminiRequestFailed = 'Request failed';
 
   static const String modelFlash20Label = '2.0 Flash';
   static const String modelFlash20Subtitle = 'Fast';
