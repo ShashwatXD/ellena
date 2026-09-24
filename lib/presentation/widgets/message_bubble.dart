@@ -11,6 +11,8 @@ import '../theme/app_breakpoints.dart';
 import '../theme/app_motion.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
+import 'app_snack_bar.dart';
 
 class MessageBubble extends ConsumerWidget {
   const MessageBubble({super.key, required this.message});
@@ -131,7 +133,10 @@ class _AssistantBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final streaming = message.status == MessageStatus.streaming;
     final failed = message.status == MessageStatus.failed;
+    final complete = message.status == MessageStatus.complete;
+    final stopped = message.status == MessageStatus.stopped;
     final empty = message.content.isEmpty;
+    final codeStyle = AppTypography.codeStyle(colors.onSurface);
 
     return Align(
       alignment: Alignment.centerLeft,
@@ -168,20 +173,36 @@ class _AssistantBubble extends StatelessWidget {
               )
             else ...[
               StreamingTextMarkdown(
-                key: ValueKey('${message.id}-${message.status.name}'),
+                key: ValueKey(
+                  '${message.id}-${message.status.name}-${theme.brightness.name}',
+                ),
                 text: message.content,
                 markdownEnabled: true,
                 animationsEnabled: false,
                 autoScroll: false,
                 styleSheet: theme.textTheme.bodyLarge?.copyWith(height: 1.6),
                 padding: EdgeInsets.zero,
+                codeBuilder: (context, name, code, closed) =>
+                    _MarkdownCodeBlock(
+                  name: name,
+                  code: code,
+                  style: codeStyle,
+                  colors: colors,
+                ),
+                highlightBuilder: (context, text, style) => Text(
+                  text,
+                  style: codeStyle.copyWith(
+                    backgroundColor:
+                        colors.surfaceContainerHighest.withValues(alpha: 0.7),
+                  ),
+                ),
               ),
               if (streaming) ...[
                 const SizedBox(height: 4),
                 const _StreamingCaret(),
               ],
             ],
-            if (message.status == MessageStatus.stopped) ...[
+            if (stopped) ...[
               const SizedBox(height: AppSpacing.xs),
               _StatusChip(
                 label: AppConstants.interruptedLabel,
@@ -197,7 +218,162 @@ class _AssistantBubble extends StatelessWidget {
                 onRetry: onRetry,
               ),
             ],
+            if (!empty && (complete || stopped)) ...[
+              const SizedBox(height: AppSpacing.sm),
+              _AssistantActions(
+                content: message.content,
+                showSuccess: complete,
+              ),
+            ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MarkdownCodeBlock extends StatelessWidget {
+  const _MarkdownCodeBlock({
+    required this.name,
+    required this.code,
+    required this.style,
+    required this.colors,
+  });
+
+  final String name;
+  final String code;
+  final TextStyle style;
+  final ColorScheme colors;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      padding: const EdgeInsets.all(AppSpacing.sm + 2),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(
+          color: colors.outline,
+          width: AppSpacing.stroke,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (name.isNotEmpty) ...[
+            Text(
+              name,
+              style: style.copyWith(
+                fontSize: 11,
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+          ],
+          SelectableText(code, style: style),
+        ],
+      ),
+    );
+  }
+}
+
+class _AssistantActions extends StatelessWidget {
+  const _AssistantActions({
+    required this.content,
+    required this.showSuccess,
+  });
+
+  final String content;
+  final bool showSuccess;
+
+  Future<void> _copy(BuildContext context) async {
+    await Clipboard.setData(ClipboardData(text: content));
+    if (!context.mounted) return;
+    HapticFeedback.selectionClick();
+    AppSnackBar.show(
+      context,
+      message: AppConstants.copiedLabel,
+      icon: Icons.check_rounded,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final motion = AppMotion.of(context, AppMotion.fast);
+
+    return Row(
+      children: [
+        if (showSuccess)
+          _SuccessCue(motion: motion, color: colors.onSurfaceVariant),
+        TextButton.icon(
+          onPressed: () => _copy(context),
+          style: TextButton.styleFrom(
+            foregroundColor: colors.onSurfaceVariant,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
+          ),
+          icon: const Icon(Icons.copy_rounded, size: 15),
+          label: Text(
+            AppConstants.copyLabel,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: colors.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SuccessCue extends StatefulWidget {
+  const _SuccessCue({required this.motion, required this.color});
+
+  final Duration motion;
+  final Color color;
+
+  @override
+  State<_SuccessCue> createState() => _SuccessCueState();
+}
+
+class _SuccessCueState extends State<_SuccessCue>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: widget.motion)
+      ..forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: CurvedAnimation(parent: _controller, curve: AppMotion.standard),
+      child: ScaleTransition(
+        scale: Tween<double>(begin: 0.85, end: 1).animate(
+          CurvedAnimation(parent: _controller, curve: AppMotion.standard),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.only(right: 4),
+          child: Icon(
+            Icons.check_circle_outline_rounded,
+            size: 16,
+            color: widget.color.withValues(alpha: 0.7),
+          ),
         ),
       ),
     );
