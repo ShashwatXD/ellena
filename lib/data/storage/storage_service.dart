@@ -17,6 +17,8 @@ class StorageService {
     if (_ready) return;
     await Hive.initFlutter();
     await openBox(StorageKeys.appBox);
+    await openBox(StorageKeys.conversationsBox);
+    await openBox(StorageKeys.messagesBox);
     _ready = true;
   }
 
@@ -25,6 +27,8 @@ class StorageService {
     if (_ready) return;
     Hive.init(path);
     await openBox(StorageKeys.appBox);
+    await openBox(StorageKeys.conversationsBox);
+    await openBox(StorageKeys.messagesBox);
     _ready = true;
   }
 

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/storage/app_storage.dart';
 import '../../data/storage/storage_keys.dart';
-import 'data_providers.dart';
 
 final themeModeProvider =
     NotifierProvider<ThemeModeNotifier, ThemeMode>(ThemeModeNotifier.new);
@@ -10,8 +10,7 @@ final themeModeProvider =
 class ThemeModeNotifier extends Notifier<ThemeMode> {
   @override
   ThemeMode build() {
-    final raw =
-        ref.read(storageServiceProvider).get<String>(StorageKeys.themeMode);
+    final raw = AppStorage.read<String>(StorageKeys.themeMode);
     return ThemeMode.values.firstWhere(
       (mode) => mode.name == raw,
       orElse: () => ThemeMode.system,
@@ -19,7 +18,7 @@ class ThemeModeNotifier extends Notifier<ThemeMode> {
   }
 
   Future<void> setMode(ThemeMode mode) async {
-    await ref.read(storageServiceProvider).set(StorageKeys.themeMode, mode.name);
+    await AppStorage.save(StorageKeys.themeMode, mode.name);
     state = mode;
   }
 }

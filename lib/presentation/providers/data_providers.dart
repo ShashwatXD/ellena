@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/api/api_repository.dart';
 import '../../data/api/api_service.dart';
+import '../../data/storage/chat_storage.dart';
 import '../../data/storage/storage_service.dart';
 import '../../data/streaming/gemini_streaming_service.dart';
 import '../../data/streaming/streaming_service.dart';
@@ -10,6 +11,10 @@ import 'mock_stream_provider.dart';
 
 final storageServiceProvider = Provider<StorageService>((ref) {
   return StorageService.instance;
+});
+
+final chatStorageProvider = Provider<ChatStorage>((ref) {
+  return ChatStorage(storage: ref.watch(storageServiceProvider));
 });
 
 final apiServiceProvider = Provider<ApiService>((ref) {

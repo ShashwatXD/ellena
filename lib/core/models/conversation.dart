@@ -23,4 +23,20 @@ class Conversation {
       isPinned: isPinned ?? this.isPinned,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'updatedAt': updatedAt.toIso8601String(),
+        'isPinned': isPinned,
+      };
+
+  factory Conversation.fromJson(Map<dynamic, dynamic> json) {
+    return Conversation(
+      id: json['id'] as String,
+      title: json['title'] as String,
+      updatedAt: DateTime.parse(json['updatedAt'] as String),
+      isPinned: json['isPinned'] as bool? ?? false,
+    );
+  }
 }

@@ -35,4 +35,26 @@ class Message {
       error: clearError ? null : (error ?? this.error),
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'conversationId': conversationId,
+        'role': role.name,
+        'content': content,
+        'status': status.name,
+        'createdAt': createdAt.toIso8601String(),
+        'error': error,
+      };
+
+  factory Message.fromJson(Map<dynamic, dynamic> json) {
+    return Message(
+      id: json['id'] as String,
+      conversationId: json['conversationId'] as String,
+      role: MessageRole.values.byName(json['role'] as String),
+      content: json['content'] as String? ?? '',
+      status: MessageStatus.values.byName(json['status'] as String),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      error: json['error'] as String?,
+    );
+  }
 }

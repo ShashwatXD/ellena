@@ -7,6 +7,7 @@ import '../../core/models/conversation.dart';
 import '../../core/models/message.dart';
 import '../../core/models/message_status.dart';
 import '../../data/api/api_exception.dart';
+import '../../data/storage/chat_storage.dart';
 import '../../data/streaming/streaming_service.dart';
 import 'chat_state.dart';
 import 'data_providers.dart';
@@ -19,6 +20,8 @@ class ChatNotifier extends Notifier<ChatState> {
   final Set<String> _activeMessageIds = {};
   StreamingService? _liveService;
 
+  ChatStorage get _storage => ref.read(chatStorageProvider);
+
   @override
   ChatState build() {
     ref.onDispose(() {
@@ -28,7 +31,28 @@ class ChatNotifier extends Notifier<ChatState> {
       _subscriptions.clear();
       _activeMessageIds.clear();
     });
-    return const ChatState();
+
+    final snapshot = _storage.load();
+    return ChatState(
+      conversations: snapshot.conversations,
+      messagesByConversation: snapshot.messagesByConversation,
+      activeConversationId: snapshot.activeConversationId,
+    );
+  }
+
+  Future<void> _persistConversation(String conversationId) async {
+    final conversation = state.conversationById(conversationId);
+    if (conversation == null) return;
+    await _storage.saveConversation(conversation);
+    await _storage.saveMessages(
+      conversationId,
+      state.messagesFor(conversationId),
+    );
+    await _storage.saveActiveConversationId(state.activeConversationId);
+  }
+
+  Future<void> _persistActiveOnly() {
+    return _storage.saveActiveConversationId(state.activeConversationId);
   }
 
   String startConversation(String firstMessage) {
@@ -68,6 +92,7 @@ class ChatNotifier extends Notifier<ChatState> {
       },
       activeConversationId: conversationId,
     );
+    unawaited(_persistConversation(conversationId));
 
     unawaited(
       _beginStream(
@@ -117,6 +142,7 @@ class ChatNotifier extends Notifier<ChatState> {
         conversationId: [...existing, userMessage, assistantMessage],
       },
     );
+    unawaited(_persistConversation(conversationId));
 
     unawaited(
       _beginStream(
@@ -156,6 +182,7 @@ class ChatNotifier extends Notifier<ChatState> {
         conversationId: messages,
       },
     );
+    unawaited(_persistConversation(conversationId));
   }
 
   bool isStreaming(String conversationId) {
@@ -174,16 +201,19 @@ class ChatNotifier extends Notifier<ChatState> {
     }
     _subscriptions.clear();
     _activeMessageIds.clear();
+    await _storage.clear();
     state = const ChatState();
   }
 
   void startNewChat() {
     state = state.copyWith(clearActiveConversationId: true);
+    unawaited(_persistActiveOnly());
   }
 
   void openConversation(String conversationId) {
     if (state.conversationById(conversationId) == null) return;
     state = state.copyWith(activeConversationId: conversationId);
+    unawaited(_persistActiveOnly());
   }
 
   void retryMessage(String conversationId, String messageId) {
@@ -217,6 +247,7 @@ class ChatNotifier extends Notifier<ChatState> {
         conversationId: messages,
       },
     );
+    unawaited(_persistConversation(conversationId));
 
     unawaited(
       _beginStream(
@@ -303,6 +334,9 @@ class ChatNotifier extends Notifier<ChatState> {
         conversationId: messages,
       },
     );
+    unawaited(
+      _storage.saveMessages(conversationId, messages),
+    );
   }
 
   Future<void> _completeStream(String conversationId, String messageId) async {
@@ -321,6 +355,7 @@ class ChatNotifier extends Notifier<ChatState> {
         conversationId: messages,
       },
     );
+    unawaited(_persistConversation(conversationId));
   }
 
   Future<void> _failStream(
@@ -356,6 +391,7 @@ class ChatNotifier extends Notifier<ChatState> {
         conversationId: messages,
       },
     );
+    unawaited(_persistConversation(conversationId));
   }
 
   String _titleFrom(String text) {
