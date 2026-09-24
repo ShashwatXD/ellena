@@ -9,6 +9,7 @@ class Message {
     required this.status,
     required this.createdAt,
     this.error,
+    this.errorDetail,
   });
 
   final String id;
@@ -18,11 +19,13 @@ class Message {
   final MessageStatus status;
   final DateTime createdAt;
   final String? error;
+  final String? errorDetail;
 
   Message copyWith({
     String? content,
     MessageStatus? status,
     String? error,
+    String? errorDetail,
     bool clearError = false,
   }) {
     return Message(
@@ -33,6 +36,7 @@ class Message {
       status: status ?? this.status,
       createdAt: createdAt,
       error: clearError ? null : (error ?? this.error),
+      errorDetail: clearError ? null : (errorDetail ?? this.errorDetail),
     );
   }
 
@@ -44,6 +48,7 @@ class Message {
         'status': status.name,
         'createdAt': createdAt.toIso8601String(),
         'error': error,
+        'errorDetail': errorDetail,
       };
 
   factory Message.fromJson(Map<dynamic, dynamic> json) {
@@ -55,6 +60,7 @@ class Message {
       status: MessageStatus.values.byName(json['status'] as String),
       createdAt: DateTime.parse(json['createdAt'] as String),
       error: json['error'] as String?,
+      errorDetail: json['errorDetail'] as String?,
     );
   }
 }

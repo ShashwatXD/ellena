@@ -1,8 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/models/mock_stream_scenario.dart';
-import '../../data/storage/app_storage.dart';
-import '../../data/storage/storage_keys.dart';
 import '../../data/streaming/fake_streaming_service.dart';
 import 'app_config_provider.dart';
 
@@ -18,12 +16,11 @@ class UseFakeStreamNotifier extends Notifier<bool> {
   @override
   bool build() {
     if (!ref.read(mockControlsAvailableProvider)) return false;
-    return AppStorage.read<bool>(StorageKeys.mockStreamEnabled) ?? true;
+    return ref.read(appConfigProvider).enableFakeStream;
   }
 
-  Future<void> setEnabled(bool enabled) async {
+  void setEnabled(bool enabled) {
     if (!ref.read(mockControlsAvailableProvider)) return;
-    await AppStorage.save(StorageKeys.mockStreamEnabled, enabled);
     state = enabled;
   }
 }

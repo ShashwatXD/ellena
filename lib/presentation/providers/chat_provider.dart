@@ -11,6 +11,7 @@ import '../../data/storage/chat_storage.dart';
 import '../../data/streaming/streaming_service.dart';
 import 'chat_state.dart';
 import 'data_providers.dart';
+import 'mock_stream_provider.dart';
 import 'model_provider.dart';
 
 final chatProvider = NotifierProvider<ChatNotifier, ChatState>(ChatNotifier.new);
@@ -18,6 +19,7 @@ final chatProvider = NotifierProvider<ChatNotifier, ChatState>(ChatNotifier.new)
 class ChatNotifier extends Notifier<ChatState> {
   final Map<String, StreamSubscription<String>> _subscriptions = {};
   final Set<String> _activeMessageIds = {};
+  final Set<String> _titleRequestedIds = {};
   StreamingService? _liveService;
 
   ChatStorage get _storage => ref.read(chatStorageProvider);
@@ -33,11 +35,11 @@ class ChatNotifier extends Notifier<ChatState> {
     });
 
     final loaded = _storage.load();
+    unawaited(_storage.saveActiveConversationId(null));
     return loaded.when(
       success: (snapshot) => ChatState(
         conversations: snapshot.conversations,
         messagesByConversation: snapshot.messagesByConversation,
-        activeConversationId: snapshot.activeConversationId,
       ),
       failure: (error, stackTrace) => const ChatState(),
     );
@@ -51,11 +53,6 @@ class ChatNotifier extends Notifier<ChatState> {
       conversationId,
       state.messagesFor(conversationId),
     );
-    await _storage.saveActiveConversationId(state.activeConversationId);
-  }
-
-  Future<void> _persistActiveOnly() {
-    return _storage.saveActiveConversationId(state.activeConversationId);
   }
 
   String startConversation(String firstMessage) {
@@ -103,6 +100,9 @@ class ChatNotifier extends Notifier<ChatState> {
         messageId: assistantMessage.id,
         prompt: userMessage.content,
       ),
+    );
+    unawaited(
+      _maybeGenerateTitle(conversationId, userMessage.content),
     );
     return conversationId;
   }
@@ -210,13 +210,69 @@ class ChatNotifier extends Notifier<ChatState> {
 
   void startNewChat() {
     state = state.copyWith(clearActiveConversationId: true);
-    unawaited(_persistActiveOnly());
   }
 
   void openConversation(String conversationId) {
     if (state.conversationById(conversationId) == null) return;
     state = state.copyWith(activeConversationId: conversationId);
-    unawaited(_persistActiveOnly());
+  }
+
+  void togglePin(String conversationId) {
+    final conversation = state.conversationById(conversationId);
+    if (conversation == null) return;
+
+    final conversations = state.conversations.map((c) {
+      if (c.id != conversationId) return c;
+      return c.copyWith(isPinned: !c.isPinned);
+    }).toList()
+      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+
+    state = state.copyWith(conversations: conversations);
+    unawaited(
+      _storage.saveConversation(
+        conversation.copyWith(isPinned: !conversation.isPinned),
+      ),
+    );
+  }
+
+  void renameConversation(String conversationId, String title) {
+    final cleaned = title.trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (cleaned.isEmpty) return;
+    final conversation = state.conversationById(conversationId);
+    if (conversation == null) return;
+
+    final updated = conversation.copyWith(title: cleaned);
+    final conversations = state.conversations.map((c) {
+      if (c.id != conversationId) return c;
+      return updated;
+    }).toList();
+
+    state = state.copyWith(conversations: conversations);
+    unawaited(_storage.saveConversation(updated));
+  }
+
+  Future<void> deleteConversation(String conversationId) async {
+    final messages = state.messagesFor(conversationId);
+    for (final message in messages) {
+      if (message.status == MessageStatus.streaming) {
+        _activeMessageIds.remove(message.id);
+        await _subscriptions.remove(message.id)?.cancel();
+      }
+    }
+
+    final conversations =
+        state.conversations.where((c) => c.id != conversationId).toList();
+    final messagesByConversation =
+        Map<String, List<Message>>.from(state.messagesByConversation)
+          ..remove(conversationId);
+
+    final clearActive = state.activeConversationId == conversationId;
+    state = state.copyWith(
+      conversations: conversations,
+      messagesByConversation: messagesByConversation,
+      clearActiveConversationId: clearActive,
+    );
+    await _storage.deleteConversation(conversationId);
   }
 
   void retryMessage(String conversationId, String messageId) {
@@ -268,27 +324,25 @@ class ChatNotifier extends Notifier<ChatState> {
   }) async {
     _activeMessageIds.add(messageId);
 
-    final prior = state
-        .messagesFor(conversationId)
-        .where(
-          (m) =>
-              m.id != messageId &&
-              m.status == MessageStatus.complete &&
-              m.content.isNotEmpty,
-        )
-        .toList();
-    if (prior.isNotEmpty && prior.last.role == MessageRole.user) {
-      prior.removeLast();
+    // Prior turns for Gemini multi-turn: complete/stopped messages with text,
+    // excluding the live assistant placeholder. The latest user text is passed
+    // separately as [prompt] (same pattern as the REST multi-turn examples).
+    final history = <({String role, String text})>[];
+    for (final message in state.messagesFor(conversationId)) {
+      if (message.id == messageId) continue;
+      if (message.content.isEmpty) continue;
+      if (message.status != MessageStatus.complete &&
+          message.status != MessageStatus.stopped) {
+        continue;
+      }
+      history.add((
+        role: message.role == MessageRole.assistant ? 'assistant' : 'user',
+        text: message.content,
+      ));
     }
-
-    final history = prior
-        .map(
-          (m) => (
-            role: m.role == MessageRole.assistant ? 'assistant' : 'user',
-            text: m.content,
-          ),
-        )
-        .toList();
+    if (history.isNotEmpty && history.last.role == 'user') {
+      history.removeLast();
+    }
 
     final service = ref.read(streamingServiceProvider);
     _liveService = service;
@@ -351,7 +405,16 @@ class ChatNotifier extends Notifier<ChatState> {
     if (index < 0) return;
     if (messages[index].status != MessageStatus.streaming) return;
 
-    messages[index] = messages[index].copyWith(status: MessageStatus.complete);
+    final content = messages[index].content;
+    if (content.isEmpty) {
+      messages[index] = messages[index].copyWith(
+        status: MessageStatus.failed,
+        error: AppConstants.geminiRequestFailed,
+      );
+    } else {
+      messages[index] =
+          messages[index].copyWith(status: MessageStatus.complete);
+    }
     state = state.copyWith(
       messagesByConversation: {
         ...state.messagesByConversation,
@@ -359,6 +422,25 @@ class ChatNotifier extends Notifier<ChatState> {
       },
     );
     unawaited(_persistConversation(conversationId));
+  }
+
+  Future<void> _maybeGenerateTitle(
+    String conversationId,
+    String firstUserMessage,
+  ) async {
+    if (ref.read(useFakeStreamProvider)) return;
+    if (!_titleRequestedIds.add(conversationId)) return;
+
+    final provisional = _titleFrom(firstUserMessage);
+    final title =
+        await ref.read(geminiTitleProvider).generateTitle(firstUserMessage);
+    if (title == null || title.isEmpty) return;
+
+    final current = state.conversationById(conversationId);
+    if (current == null) return;
+    if (current.title != provisional) return;
+
+    renameConversation(conversationId, title);
   }
 
   Future<void> _failStream(
@@ -374,18 +456,13 @@ class ChatNotifier extends Notifier<ChatState> {
     if (index < 0) return;
     if (messages[index].status != MessageStatus.streaming) return;
 
-    final isCancel = error is ApiException && error.isCancel;
-    final message = isCancel
-        ? AppConstants.stoppedLabel
-        : error is ApiException
-            ? AppConstants.geminiRequestFailed
-            : error is StateError
-                ? AppConstants.mockStreamFailed
-                : AppConstants.genericError;
+    final mapped = ApiException.fromObject(error);
+    final isCancel = mapped.isCancel;
 
     messages[index] = messages[index].copyWith(
       status: isCancel ? MessageStatus.stopped : MessageStatus.failed,
-      error: isCancel ? null : message,
+      error: isCancel ? null : mapped.message,
+      errorDetail: isCancel ? null : mapped.detail,
       clearError: isCancel,
     );
     state = state.copyWith(

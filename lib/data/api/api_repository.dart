@@ -33,4 +33,24 @@ class ApiRepository {
       cancelToken: cancelToken,
     );
   }
+
+  Future<Result<Response<Map<String, dynamic>>>> generateGeminiContent({
+    required String model,
+    required String apiKey,
+    required Map<String, dynamic> body,
+    CancelToken? cancelToken,
+  }) {
+    return _api.post<Map<String, dynamic>>(
+      ApiRoutes.geminiGenerateContent(model),
+      queryParameters: {'key': apiKey},
+      data: body,
+      options: Options(
+        headers: const {
+          Headers.acceptHeader: Headers.jsonContentType,
+          Headers.contentTypeHeader: Headers.jsonContentType,
+        },
+      ),
+      cancelToken: cancelToken,
+    );
+  }
 }

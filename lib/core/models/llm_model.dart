@@ -13,30 +13,30 @@ class LlmModel {
 }
 
 abstract final class GeminiModels {
-  static const flash20 = LlmModel(
-    id: 'gemini-2.0-flash',
-    label: AppConstants.modelFlash20Label,
-    subtitle: AppConstants.modelFlash20Subtitle,
+  static const flashLite = LlmModel(
+    id: 'gemini-3.5-flash-lite',
+    label: AppConstants.modelFlashLiteLabel,
+    subtitle: AppConstants.modelFlashLiteSubtitle,
   );
 
-  static const flash25 = LlmModel(
-    id: 'gemini-2.5-flash',
-    label: AppConstants.modelFlash25Label,
-    subtitle: AppConstants.modelFlash25Subtitle,
+  static const flash = LlmModel(
+    id: 'gemini-3.8-flash',
+    label: AppConstants.modelFlashLabel,
+    subtitle: AppConstants.modelFlashSubtitle,
   );
 
-  static const pro25 = LlmModel(
-    id: 'gemini-2.5-pro',
-    label: AppConstants.modelPro25Label,
-    subtitle: AppConstants.modelPro25Subtitle,
+  static const pro = LlmModel(
+    id: 'gemini-3.1-pro-preview',
+    label: AppConstants.modelProLabel,
+    subtitle: AppConstants.modelProSubtitle,
   );
 
-  static const List<LlmModel> all = [flash20, flash25, pro25];
+  static const List<LlmModel> all = [flashLite, flash, pro];
 
   static LlmModel byId(String id) {
     for (final model in all) {
       if (model.id == id) return model;
     }
-    return flash20;
+    return flash;
   }
 }

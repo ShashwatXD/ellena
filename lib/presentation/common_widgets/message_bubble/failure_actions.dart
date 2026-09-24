@@ -3,12 +3,14 @@ part of 'message_bubble.dart';
 class _FailureActions extends StatefulWidget {
   const _FailureActions({
     required this.onRetry,
-    required this.detail,
-    this.showDetail = false,
+    required this.summary,
+    this.detail,
+    this.showSummary = false,
   });
 
-  final String detail;
-  final bool showDetail;
+  final String summary;
+  final String? detail;
+  final bool showSummary;
   final VoidCallback? onRetry;
 
   @override
@@ -17,6 +19,13 @@ class _FailureActions extends StatefulWidget {
 
 class _FailureActionsState extends State<_FailureActions> {
   bool _pressed = false;
+  bool _expanded = false;
+
+  bool get _hasDetail {
+    final detail = widget.detail?.trim();
+    if (detail == null || detail.isEmpty) return false;
+    return detail != widget.summary;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,13 +36,11 @@ class _FailureActionsState extends State<_FailureActions> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (widget.showDetail)
+        if (widget.showSummary)
           Padding(
-            padding: EdgeInsets.only(
-              bottom: widget.onRetry != null ? AppSpacing.xs : 0,
-            ),
+            padding: EdgeInsets.only(bottom: _hasDetail || widget.onRetry != null ? 6 : 0),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Icon(
                   Icons.error_outline_rounded,
@@ -43,7 +50,7 @@ class _FailureActionsState extends State<_FailureActions> {
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
-                    widget.detail,
+                    widget.summary,
                     style: theme.textTheme.labelMedium?.copyWith(
                       color: colors.error.withValues(alpha: 0.95),
                       height: 1.3,
@@ -53,7 +60,58 @@ class _FailureActionsState extends State<_FailureActions> {
               ],
             ),
           ),
-        if (widget.onRetry != null)
+        if (_hasDetail) ...[
+          InkWell(
+            onTap: () => setState(() => _expanded = !_expanded),
+            borderRadius: BorderRadius.circular(AppRadii.sm),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _expanded
+                        ? AppConstants.showLessLabel
+                        : AppConstants.knowMoreLabel,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: colors.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  Icon(
+                    _expanded
+                        ? Icons.expand_less_rounded
+                        : Icons.expand_more_rounded,
+                    size: 16,
+                    color: colors.onSurfaceVariant,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          AnimatedCrossFade(
+            firstChild: const SizedBox(width: double.infinity),
+            secondChild: Padding(
+              padding: const EdgeInsets.only(top: 6, bottom: 4),
+              child: Text(
+                widget.detail!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colors.onSurfaceVariant,
+                  height: 1.4,
+                ),
+              ),
+            ),
+            crossFadeState: _expanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: motion,
+            sizeCurve: AppMotion.standard,
+          ),
+        ],
+        if (widget.onRetry != null) ...[
+          if (_hasDetail || widget.showSummary)
+            const SizedBox(height: AppSpacing.xs),
           AnimatedScale(
             scale: _pressed ? 0.96 : 1,
             duration: motion,
@@ -99,6 +157,7 @@ class _FailureActionsState extends State<_FailureActions> {
               ),
             ),
           ),
+        ],
       ],
     );
   }

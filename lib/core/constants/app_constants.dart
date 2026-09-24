@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 abstract final class AppConstants {
   static const String appName = 'Ellena';
   static const String homeHeadline = 'What can I do for you?';
-  static const String composerHint = 'Assign a task or ask anything';
+  static const String composerHint = 'Ask anything';
 
   static const String sendTooltip = 'Send';
   static const String stopTooltip = 'Stop';
@@ -11,6 +11,21 @@ abstract final class AppConstants {
   static const String modelTooltip = 'Model';
   static const String menuTooltip = 'Menu';
   static const String newChatTooltip = 'New chat';
+  static const String newChatLabel = 'New chat';
+  static const String chatActionsTooltip = 'Chat actions';
+  static const String pinChatLabel = 'Pin';
+  static const String unpinChatLabel = 'Unpin';
+  static const String renameChatLabel = 'Rename';
+  static const String deleteChatLabel = 'Delete';
+  static const String renameChatTitle = 'Rename chat';
+  static const String renameChatHint = 'Title';
+  static const String renameChatSave = 'Save';
+  static const String renameChatCancel = 'Cancel';
+  static const String deleteChatTitle = 'Delete chat?';
+  static const String deleteChatBody =
+      'This removes the conversation from this device.';
+  static const String deleteChatConfirm = 'Delete';
+  static const String deleteChatCancel = 'Cancel';
 
   static const String chatFallbackTitle = 'Chat';
   static const String noMessages = 'No messages';
@@ -22,15 +37,28 @@ abstract final class AppConstants {
   static const String stoppedLabel = 'Stopped';
   static const String genericError = 'Something went wrong';
   static const String retryLabel = 'Retry';
+  static const String knowMoreLabel = 'Know more';
+  static const String showLessLabel = 'Show less';
   static const String copiedLabel = 'Copied';
   static const String geminiRequestFailed = 'Request failed';
+  static const String rateLimitReached = 'Rate limit reached';
+  static const String authenticationFailed = 'Authentication failed';
+  static const String invalidRequest = 'Invalid request';
+  static const String modelNotFound = 'Model not found';
+  static const String serverError = 'Server error';
+  static const String serviceUnavailable =
+      'Service temporarily unavailable';
+  static const String requestTimedOut = 'Request timed out';
+  static const String connectionFailed = 'Connection failed';
+  static const String titlePromptPrefix =
+      'Reply with a 3-6 word chat title only. No quotes or punctuation.\n\n';
 
-  static const String modelFlash20Label = '2.0 Flash';
-  static const String modelFlash20Subtitle = 'Fast';
-  static const String modelFlash25Label = '2.5 Flash';
-  static const String modelFlash25Subtitle = 'Balanced';
-  static const String modelPro25Label = '2.5 Pro';
-  static const String modelPro25Subtitle = 'Stronger';
+  static const String modelFlashLiteLabel = '3.5 Flash-Lite';
+  static const String modelFlashLiteSubtitle = 'Fast';
+  static const String modelFlashLabel = '3.8 Flash';
+  static const String modelFlashSubtitle = 'Balanced';
+  static const String modelProLabel = '3.1 Pro';
+  static const String modelProSubtitle = 'Stronger';
 
   static const String settingsTitle = 'Settings';
   static const String accountTooltip = 'Account';

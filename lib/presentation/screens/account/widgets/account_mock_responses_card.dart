@@ -43,12 +43,9 @@ class AccountMockResponsesCard extends ConsumerWidget {
             ),
             Switch.adaptive(
               value: enabled,
-              onChanged: (value) async {
+              onChanged: (value) {
                 HapticFeedback.selectionClick();
-                await ref
-                    .read(useFakeStreamProvider.notifier)
-                    .setEnabled(value);
-                if (!context.mounted) return;
+                ref.read(useFakeStreamProvider.notifier).setEnabled(value);
                 AppSnackBar.show(
                   context,
                   message: value

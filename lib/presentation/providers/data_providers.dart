@@ -5,6 +5,7 @@ import '../../data/api/api_service.dart';
 import '../../data/storage/chat_storage.dart';
 import '../../data/storage/storage_service.dart';
 import '../../data/streaming/gemini_streaming_service.dart';
+import '../../data/streaming/gemini_title_service.dart';
 import '../../data/streaming/streaming_service.dart';
 import 'app_config_provider.dart';
 import 'mock_stream_provider.dart';
@@ -29,6 +30,14 @@ final apiRepositoryProvider = Provider<ApiRepository>((ref) {
 final geminiStreamingProvider = Provider<GeminiStreamingService>((ref) {
   final config = ref.watch(appConfigProvider);
   return GeminiStreamingService(
+    repository: ref.watch(apiRepositoryProvider),
+    apiKey: config.geminiApiKey,
+  );
+});
+
+final geminiTitleProvider = Provider<GeminiTitleService>((ref) {
+  final config = ref.watch(appConfigProvider);
+  return GeminiTitleService(
     repository: ref.watch(apiRepositoryProvider),
     apiKey: config.geminiApiKey,
   );

@@ -99,8 +99,9 @@ class _AssistantBubble extends StatelessWidget {
             if (failed) ...[
               const SizedBox(height: AppSpacing.sm),
               _FailureActions(
-                showDetail: !empty,
-                detail: message.error ?? AppConstants.genericError,
+                summary: message.error ?? AppConstants.genericError,
+                detail: message.errorDetail,
+                showSummary: !empty,
                 onRetry: onRetry,
               ),
             ],

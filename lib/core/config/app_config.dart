@@ -15,14 +15,22 @@ class AppConfig {
 
   static late AppConfig current;
 
-  factory AppConfig.fromJson(Map<String, dynamic> json) {
+  static const String _geminiKeyFromEnv = String.fromEnvironment(
+    'GEMINI_API_KEY',
+    defaultValue: '',
+  );
+
+  factory AppConfig.fromJson(
+    Map<String, dynamic> json, {
+    String geminiApiKey = '',
+  }) {
     return AppConfig(
       flavor: json['FLAVOR'] as String? ?? 'dev',
       appName: json['APP_NAME'] as String? ?? 'Ellena',
       apiBaseUrl: json['API_BASE_URL'] as String? ??
           'https://generativelanguage.googleapis.com',
-      geminiApiKey: json['GEMINI_API_KEY'] as String? ?? '',
-      geminiModel: json['GEMINI_MODEL'] as String? ?? 'gemini-2.0-flash',
+      geminiApiKey: geminiApiKey,
+      geminiModel: json['GEMINI_MODEL'] as String? ?? 'gemini-3.8-flash',
       enableFakeStream: (json['ENABLE_FAKE_STREAM'] as String? ?? 'true')
               .toLowerCase() ==
           'true',
@@ -35,6 +43,7 @@ class AppConfig {
     final raw = await rootBundle.loadString(path);
     current = AppConfig.fromJson(
       jsonDecode(raw) as Map<String, dynamic>,
+      geminiApiKey: _geminiKeyFromEnv,
     );
     return current;
   }

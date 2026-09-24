@@ -1,8 +1,8 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../core/result/result.dart';
 import 'api_exception.dart';
-import 'api_interceptor.dart';
 
 class ApiService {
   ApiService({
@@ -19,9 +19,7 @@ class ApiService {
                   'Accept': 'application/json',
                 },
               ),
-            ) {
-    _dio.interceptors.add(ApiInterceptor());
-  }
+            );
 
   final Dio _dio;
 
@@ -119,9 +117,22 @@ class ApiService {
     try {
       return Success(await request());
     } on DioException catch (error, stackTrace) {
-      return Failure(ApiException.fromDio(error), stackTrace);
+      final exception = ApiException.fromDio(error);
+      debugPrint(
+        'API ✕ ${error.requestOptions.method} '
+        '${_redactUri(error.requestOptions.uri)} → $exception',
+      );
+      return Failure(exception, stackTrace);
     } catch (error, stackTrace) {
+      debugPrint('API ✕ $error');
       return Failure(error, stackTrace);
     }
+  }
+
+  static String _redactUri(Uri uri) {
+    if (!uri.queryParameters.containsKey('key')) return uri.toString();
+    final params = Map<String, String>.from(uri.queryParameters)
+      ..['key'] = '***';
+    return uri.replace(queryParameters: params).toString();
   }
 }

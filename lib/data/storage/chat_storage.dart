@@ -34,16 +34,10 @@ class ChatStorage {
             _loadMessages(conversation.id);
       }
 
-      final activeId =
-          AppStorage.read<String>(StorageKeys.activeConversationId);
-      final activeOk =
-          activeId != null && conversations.any((c) => c.id == activeId);
-
       return Success(
         ChatSnapshot(
           conversations: conversations,
           messagesByConversation: messagesByConversation,
-          activeConversationId: activeOk ? activeId : null,
         ),
       );
     } catch (error, stackTrace) {
@@ -110,6 +104,25 @@ class ChatStorage {
         await AppStorage.remove(StorageKeys.activeConversationId);
       } else {
         await AppStorage.save(StorageKeys.activeConversationId, id);
+      }
+      return true;
+    });
+  }
+
+  Future<Result<bool>> deleteConversation(String conversationId) {
+    return _run(() async {
+      await _storage.delete(
+        conversationId,
+        boxName: StorageKeys.conversationsBox,
+      );
+      await _storage.delete(
+        conversationId,
+        boxName: StorageKeys.messagesBox,
+      );
+      final active =
+          AppStorage.read<String>(StorageKeys.activeConversationId);
+      if (active == conversationId) {
+        await AppStorage.remove(StorageKeys.activeConversationId);
       }
       return true;
     });
