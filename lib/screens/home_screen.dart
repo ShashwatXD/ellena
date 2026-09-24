@@ -7,13 +7,11 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
     return Scaffold(
       body: Center(
         child: Text(
           AppConstants.appName,
-          style: textTheme.headlineMedium,
+          style: Theme.of(context).textTheme.headlineMedium,
         ),
       ),
     );
