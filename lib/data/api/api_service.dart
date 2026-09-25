@@ -3,7 +3,6 @@ import 'package:dio/dio.dart';
 import '../../core/result/result.dart';
 import 'api_exception.dart';
 import 'api_interceptor.dart';
-import 'network_watch.dart';
 
 class ApiService {
   ApiService({

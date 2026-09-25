@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 class AppConfig {
-  const AppConfig({
+  AppConfig._({
     required this.flavor,
     required this.appName,
     required this.apiBaseUrl,
@@ -13,7 +13,18 @@ class AppConfig {
     required this.enableFakeStream,
   });
 
-  static late AppConfig current;
+  static AppConfig? _instance;
+
+  static AppConfig get instance {
+    final config = _instance;
+    if (config == null) {
+      throw StateError('AppConfig.load() has not run');
+    }
+    return config;
+  }
+
+  static bool get isDev => _instance?.flavor == 'dev';
+  static bool get isProd => _instance?.flavor == 'prod';
 
   static const String _geminiKeyFromEnv = String.fromEnvironment(
     'GEMINI_API_KEY',
@@ -24,7 +35,7 @@ class AppConfig {
     Map<String, dynamic> json, {
     String geminiApiKey = '',
   }) {
-    return AppConfig(
+    return AppConfig._(
       flavor: json['FLAVOR'] as String? ?? 'dev',
       appName: json['APP_NAME'] as String? ?? 'Ellena',
       apiBaseUrl: json['API_BASE_URL'] as String? ??
@@ -41,11 +52,11 @@ class AppConfig {
     final path =
         kDebugMode ? 'assets/config/dev.json' : 'assets/config/prod.json';
     final raw = await rootBundle.loadString(path);
-    current = AppConfig.fromJson(
+    _instance = AppConfig.fromJson(
       jsonDecode(raw) as Map<String, dynamic>,
       geminiApiKey: _geminiKeyFromEnv,
     );
-    return current;
+    return instance;
   }
 
   final String flavor;
@@ -55,7 +66,5 @@ class AppConfig {
   final String geminiModel;
   final bool enableFakeStream;
 
-  bool get isDev => flavor == 'dev';
-  bool get isProd => flavor == 'prod';
   bool get hasGeminiKey => geminiApiKey.isNotEmpty;
 }
