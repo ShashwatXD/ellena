@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ellena history</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #2f2d29;
+        --muted: #8a8680;
+        --line: #e6e4df;
+        --mist: #f6f5f2;
+        --white: #fff;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+        color: var(--ink);
+        background: var(--mist);
+      }
+      main {
+        display: grid;
+        grid-template-columns: 280px 1fr 300px;
+        min-height: 100vh;
+      }
+      aside {
+        background: var(--white);
+        border-right: 1px solid var(--line);
+        padding: 24px 16px;
+      }
+      aside.ops {
+        border-right: 0;
+        border-left: 1px solid var(--line);
+      }
+      section { padding: 24px; }
+      h1, h2 { font-weight: 600; margin: 0; }
+      h1 { font-size: 20px; }
+      h2 { font-size: 16px; word-break: break-all; }
+      p { color: var(--muted); font-size: 14px; line-height: 1.4; }
+      form, .stack { display: flex; gap: 8px; }
+      input, textarea, button { font: inherit; }
+      input, textarea {
+        flex: 1;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px 12px;
+        background: var(--white);
+        color: var(--ink);
+      }
+      button {
+        border: 0;
+        border-radius: 12px;
+        padding: 10px 14px;
+        background: var(--ink);
+        color: white;
+        cursor: pointer;
+      }
+      .user, .chat {
+        width: 100%;
+        margin-top: 8px;
+        padding: 12px;
+        text-align: left;
+        background: transparent;
+        color: var(--ink);
+        border: 1px solid transparent;
+        border-radius: 12px;
+      }
+      .user[data-on='true'] { background: var(--mist); }
+      .user .id {
+        display: block;
+        font-size: 13px;
+        word-break: break-all;
+      }
+      .chat {
+        background: var(--white);
+        border-color: var(--line);
+        cursor: default;
+      }
+      .op {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--line);
+      }
+      .op strong { display: block; text-transform: capitalize; }
+      .op .facts { word-break: break-all; }
+      .meta, .facts { color: var(--muted); font-size: 13px; line-height: 1.45; }
+      .facts { margin-top: 6px; }
+      .message {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid var(--line);
+        color: var(--ink);
+      }
+      .message p { margin: 4px 0 0; color: var(--ink); }
+      .composer { margin-top: 12px; }
+      .empty { color: var(--muted); }
+      @media (max-width: 800px) {
+        main { grid-template-columns: 1fr; }
+        aside { border-right: 0; border-bottom: 1px solid var(--line); }
+        aside.ops { border-left: 0; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <aside>
+        <h1>Users</h1>
+        <p>Paste an install id from the app.</p>
+        <form id="open-user">
+          <input name="install" placeholder="Install id" required />
+          <button type="submit">Open</button>
+        </form>
+        <div id="users"></div>
+      </aside>
+      <section>
+        <h2 id="who">Pick a user</h2>
+        <p id="hint" class="empty">Chats and messages for that phone show here.</p>
+        <div id="chats"></div>
+        <form id="add-chat" hidden>
+          <input name="title" placeholder="New chat title" required />
+          <button type="submit">Add chat</button>
+        </form>
+      </section>
+      <aside class="ops">
+        <h1>Recent operations</h1>
+        <p id="ops-empty" class="empty">Open a user to see them.</p>
+        <div id="ops"></div>
+      </aside>
+    </main>
+    <script>
+      let current = '';
+
+      const usersEl = document.querySelector('#users');
+      const chatsEl = document.querySelector('#chats');
+      const opsEl = document.querySelector('#ops');
+      const opsEmpty = document.querySelector('#ops-empty');
+      const whoEl = document.querySelector('#who');
+      const hintEl = document.querySelector('#hint');
+      const addChat = document.querySelector('#add-chat');
+
+      function userButton(user) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'user';
+        button.dataset.on = String(user.installId === current);
+        const id = document.createElement('span');
+        id.className = 'id';
+        id.textContent = user.installId;
+        const meta = document.createElement('span');
+        meta.className = 'meta';
+        meta.textContent = user.chats + (user.chats === 1 ? ' chat' : ' chats');
+        button.append(id, meta);
+        button.onclick = () => openUser(user.installId);
+        return button;
+      }
+
+      async function loadUsers() {
+        const users = await fetch('/api/users').then((response) => response.json());
+        usersEl.replaceChildren(...users.map(userButton));
+      }
+
+      function messageLine(message) {
+        const line = document.createElement('div');
+        line.className = 'message';
+        const facts = document.createElement('div');
+        facts.className = 'meta';
+        const bits = [
+          message.role,
+          message.status,
+          message.createdAt ? new Date(message.createdAt).toLocaleString() : '',
+          message.id,
+        ].filter(Boolean);
+        facts.textContent = bits.join(' · ');
+        const content = document.createElement('p');
+        content.textContent = message.content || '(empty)';
+        line.append(facts, content);
+        if (message.error) {
+          const error = document.createElement('div');
+          error.className = 'meta';
+          error.textContent = message.error + (message.errorDetail ? ' — ' + message.errorDetail : '');
+          line.append(error);
+        }
+        const file = message.attachment;
+        if (file) {
+          const attached = document.createElement('div');
+          attached.className = 'meta';
+          const size = file.sizeBytes ? Math.ceil(file.sizeBytes / 1024) + ' KB' : '';
+          attached.textContent = [file.name, file.mimeType, size].filter(Boolean).join(' · ');
+          line.append(attached);
+        }
+        return line;
+      }
+
+      function operationLine(op) {
+        const row = document.createElement('article');
+        row.className = 'op';
+        const title = document.createElement('strong');
+        title.textContent = op.kind;
+        const facts = document.createElement('div');
+        facts.className = 'facts';
+        facts.textContent = [op.id, op.chatId, op.at ? new Date(op.at).toLocaleString() : '']
+          .filter(Boolean)
+          .join(' · ');
+        row.append(title, facts);
+        return row;
+      }
+
+      function chatCard(chat) {
+        const card = document.createElement('article');
+        card.className = 'chat';
+        const title = document.createElement('strong');
+        title.textContent = chat.title;
+        const facts = document.createElement('div');
+        facts.className = 'facts';
+        facts.textContent = [
+          chat.isPinned ? 'Pinned' : 'Not pinned',
+          new Date(chat.updatedAt).toLocaleString(),
+          chat.messages.length + (chat.messages.length === 1 ? ' message' : ' messages'),
+          chat.id,
+        ].join(' · ');
+        card.append(title, facts, ...chat.messages.map(messageLine));
+
+        const form = document.createElement('form');
+        form.className = 'composer';
+        const input = document.createElement('input');
+        input.name = 'content';
+        input.placeholder = 'Add a message';
+        input.required = true;
+        const button = document.createElement('button');
+        button.type = 'submit';
+        button.textContent = 'Add';
+        form.append(input, button);
+        form.onsubmit = async (event) => {
+          event.preventDefault();
+          await fetch(
+            '/api/users/' + current + '/chats/' + chat.id + '/messages',
+            {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ content: new FormData(form).get('content') }),
+            },
+          );
+          await openUser(current);
+        };
+        card.append(form);
+        return card;
+      }
+
+      async function openUser(installId) {
+        current = installId;
+        whoEl.textContent = installId;
+        const body = await fetch('/api/users/' + encodeURIComponent(installId)).then(
+          (response) => response.json(),
+        );
+        const operations = body.operations || [];
+        hintEl.hidden = body.chats.length > 0;
+        hintEl.textContent = 'No chats for this id yet.';
+        addChat.hidden = false;
+        opsEmpty.hidden = operations.length > 0;
+        opsEl.replaceChildren(...operations.map(operationLine));
+        chatsEl.replaceChildren(...body.chats.map(chatCard));
+        await loadUsers();
+      }
+
+      document.querySelector('#open-user').onsubmit = (event) => {
+        event.preventDefault();
+        const id = new FormData(event.target).get('install').toString().trim();
+        if (id) openUser(id);
+      };
+
+      addChat.onsubmit = async (event) => {
+        event.preventDefault();
+        if (!current) return;
+        await fetch('/api/users/' + encodeURIComponent(current) + '/chats', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ title: new FormData(event.target).get('title') }),
+        });
+        event.target.reset();
+        await openUser(current);
+      };
+
+      loadUsers();
+    </script>
+  </body>
+</html>
