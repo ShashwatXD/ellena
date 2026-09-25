@@ -2,7 +2,6 @@ import '../../core/models/conversation.dart';
 import '../../core/models/message.dart';
 import '../../core/models/message_status.dart';
 import '../../core/result/result.dart';
-import 'app_storage.dart';
 import 'chat_snapshot.dart';
 import 'storage_keys.dart';
 import 'storage_service.dart';
@@ -98,17 +97,6 @@ class ChatStorage {
     });
   }
 
-  Future<Result<bool>> saveActiveConversationId(String? id) {
-    return _run(() async {
-      if (id == null) {
-        await AppStorage.remove(StorageKeys.activeConversationId);
-      } else {
-        await AppStorage.save(StorageKeys.activeConversationId, id);
-      }
-      return true;
-    });
-  }
-
   Future<Result<bool>> deleteConversation(String conversationId) {
     return _run(() async {
       await _storage.delete(
@@ -119,11 +107,6 @@ class ChatStorage {
         conversationId,
         boxName: StorageKeys.messagesBox,
       );
-      final active =
-          AppStorage.read<String>(StorageKeys.activeConversationId);
-      if (active == conversationId) {
-        await AppStorage.remove(StorageKeys.activeConversationId);
-      }
       return true;
     });
   }
@@ -132,7 +115,6 @@ class ChatStorage {
     return _run(() async {
       await _storage.clear(StorageKeys.conversationsBox);
       await _storage.clear(StorageKeys.messagesBox);
-      await AppStorage.remove(StorageKeys.activeConversationId);
       return true;
     });
   }

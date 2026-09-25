@@ -95,6 +95,7 @@ class _ChatComposerState extends State<ChatComposer>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     final focused = _focusNode.hasFocus;
     final controlsEnabled = widget.enabled && !widget.isStreaming;
     final motion = AppMotion.of(context, AppMotion.normal);
@@ -214,10 +215,15 @@ class _ChatComposerState extends State<ChatComposer>
                         tooltip: AppConstants.sendTooltip,
                         icon: Icons.arrow_upward_rounded,
                         onPressed: _canSend ? _submit : null,
-                        foreground:
-                            _canSend ? colors.onPrimary : colors.onSurface,
+                        foreground: _canSend
+                            ? (isDark ? colors.surface : colors.onPrimary)
+                            : (isDark
+                                ? colors.onSurfaceVariant
+                                : colors.onSurface),
                         filled: true,
-                        fillColor: _canSend ? colors.primary : colors.outline,
+                        fillColor: _canSend
+                            ? (isDark ? colors.onSurface : colors.primary)
+                            : colors.outline,
                         dimWhenDisabled: false,
                         emphasize: _canSend,
                       ),

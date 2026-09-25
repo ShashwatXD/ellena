@@ -98,12 +98,12 @@ abstract final class AppConstants {
   static const String usingMockStream = 'Using mock stream';
   static const String usingGeminiStream = 'Using Gemini';
 
-  static const List<({IconData icon, String label})> homeSuggestions = [
-    (icon: Icons.slideshow_outlined, label: 'Create slides'),
-    (icon: Icons.language_outlined, label: 'Build website'),
-    (icon: Icons.palette_outlined, label: 'Design'),
-    (icon: Icons.sports_esports_outlined, label: 'Create games'),
-  ];
+static const List<({IconData icon, String label})> homeSuggestions = [
+  (icon: Icons.auto_awesome, label: 'Learn something'),
+  (icon: Icons.lightbulb_outline, label: 'Brainstorm ideas'),
+  (icon: Icons.code_outlined, label: 'Help me code'),
+  (icon: Icons.edit_outlined, label: 'Write something'),
+];
 
   static const String mockScenarioShort = 'Short';
   static const String mockScenarioMarkdown = 'Markdown';

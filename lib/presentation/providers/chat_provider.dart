@@ -45,7 +45,6 @@ class ChatNotifier extends Notifier<ChatState> {
     });
 
     final loaded = _storage.load();
-    unawaited(_storage.saveActiveConversationId(null));
     return loaded.when(
       success: (snapshot) => ChatState(
         conversations: snapshot.conversations,

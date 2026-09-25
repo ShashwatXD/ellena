@@ -8,5 +8,4 @@ abstract final class StorageKeys {
 
   static const String themeMode = 'theme_mode';
   static const String onboardingDone = 'onboarding_done';
-  static const String activeConversationId = 'active_conversation_id';
 }
