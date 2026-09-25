@@ -1,3 +1,4 @@
+import 'chat_attachment.dart';
 import 'message_status.dart';
 
 class Message {
@@ -10,6 +11,7 @@ class Message {
     required this.createdAt,
     this.error,
     this.errorDetail,
+    this.attachment,
   });
 
   final String id;
@@ -20,6 +22,7 @@ class Message {
   final DateTime createdAt;
   final String? error;
   final String? errorDetail;
+  final ChatAttachment? attachment;
 
   Message copyWith({
     String? content,
@@ -37,6 +40,7 @@ class Message {
       createdAt: createdAt,
       error: clearError ? null : (error ?? this.error),
       errorDetail: clearError ? null : (errorDetail ?? this.errorDetail),
+      attachment: attachment,
     );
   }
 
@@ -49,6 +53,7 @@ class Message {
         'createdAt': createdAt.toIso8601String(),
         'error': error,
         'errorDetail': errorDetail,
+        'attachment': attachment?.toJson(),
       };
 
   factory Message.fromJson(Map<dynamic, dynamic> json) {
@@ -61,6 +66,9 @@ class Message {
       createdAt: DateTime.parse(json['createdAt'] as String),
       error: json['error'] as String?,
       errorDetail: json['errorDetail'] as String?,
+      attachment: json['attachment'] is Map
+          ? ChatAttachment.fromJson(json['attachment'] as Map)
+          : null,
     );
   }
 }

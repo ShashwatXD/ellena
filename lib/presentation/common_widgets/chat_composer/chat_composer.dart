@@ -14,6 +14,7 @@ import '../../theme/app_spacing.dart';
 import '../add_to_chat_sheet.dart';
 import '../app_bottom_sheet.dart';
 import '../connectors_sheet.dart';
+import 'composer_attachment_bar.dart';
 import 'composer_quote_bar.dart';
 import 'composer_skill_chip.dart';
 import 'skill_picker.dart';
@@ -50,7 +51,10 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
   late final AnimationController _pulse;
 
   bool get _canSend =>
-      widget.enabled && !widget.isStreaming && _body(_controller.text).isNotEmpty;
+      widget.enabled &&
+      !widget.isStreaming &&
+      (_body(_controller.text).isNotEmpty ||
+          ref.read(composerAttachmentProvider) != null);
 
   String? get _slashQuery {
     final match = RegExp(r'(?:^|\s)/([^\s]*)$').firstMatch(_controller.text);
@@ -112,6 +116,7 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
     ref.read(skillPickerProvider.notifier).close();
     setState(() {});
     widget.onSend(text);
+    ref.read(composerAttachmentProvider.notifier).clear();
   }
 
   void _applyExactSlash() {
@@ -195,9 +200,10 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
     final isDark = theme.brightness == Brightness.dark;
     final controlsEnabled = widget.enabled && !widget.isStreaming;
     final motion = AppMotion.of(context, AppMotion.normal);
-    final expanded = _expanded;
     final quote = ref.watch(composerQuoteProvider);
     final skill = ref.watch(selectedSkillProvider);
+    final attachment = ref.watch(composerAttachmentProvider);
+    final expanded = _expanded || attachment != null;
     final slash = _slashQuery;
     final skillsOpen = ref.watch(skillPickerProvider);
     final showSlash = controlsEnabled &&
@@ -266,6 +272,12 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (attachment != null)
+              ComposerAttachmentBar(
+                attachment: attachment,
+                onClear: () =>
+                    ref.read(composerAttachmentProvider.notifier).clear(),
+              ),
             if (showSlash)
               skillsOpen
                   ? SkillPicker(

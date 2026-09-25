@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/models/chat_attachment.dart';
 import '../../core/models/mock_stream_scenario.dart';
 import '../providers/providers.dart';
 import '../theme/app_breakpoints.dart';
@@ -10,6 +11,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 import 'app_bottom_sheet.dart';
+import '../utils/chat_media.dart';
 
 class AddToChatSheet extends ConsumerWidget {
   const AddToChatSheet({super.key, required this.onPrompt});
@@ -29,12 +31,13 @@ class AddToChatSheet extends ConsumerWidget {
         children: [
           Padding(
             padding: EdgeInsets.symmetric(horizontal: pad),
-            child: const Row(
+            child: Row(
               children: [
                 Expanded(
                   child: _ActionTile(
                     icon: Icons.photo_camera_outlined,
                     label: AppConstants.addCamera,
+                    onTap: () => _pick(context, ref, ChatMedia.camera),
                   ),
                 ),
                 SizedBox(width: AppSpacing.sm),
@@ -42,6 +45,7 @@ class AddToChatSheet extends ConsumerWidget {
                   child: _ActionTile(
                     icon: Icons.image_outlined,
                     label: AppConstants.addPicture,
+                    onTap: () => _pick(context, ref, ChatMedia.picture),
                   ),
                 ),
                 SizedBox(width: AppSpacing.sm),
@@ -49,6 +53,7 @@ class AddToChatSheet extends ConsumerWidget {
                   child: _ActionTile(
                     icon: Icons.attach_file,
                     label: AppConstants.addFile,
+                    onTap: () => _pick(context, ref, ChatMedia.pdf),
                   ),
                 ),
               ],
@@ -127,36 +132,56 @@ class AddToChatSheet extends ConsumerWidget {
     Navigator.of(context).pop();
     onPrompt(scenario.label);
   }
+
+  Future<void> _pick(
+    BuildContext context,
+    WidgetRef ref,
+    Future<ChatAttachment?> Function(BuildContext context) choose,
+  ) async {
+    final attachment = await choose(context);
+    if (attachment == null || !context.mounted) return;
+    ref.read(composerAttachmentProvider.notifier).set(attachment);
+    Navigator.of(context).pop();
+  }
 }
 
 class _ActionTile extends StatelessWidget {
-  const _ActionTile({required this.icon, required this.label});
+  const _ActionTile({
+    required this.icon,
+    required this.label,
+    this.onTap,
+  });
 
   final IconData icon;
   final String label;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 18),
-      decoration: BoxDecoration(
-        color: colors.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, size: 26, color: colors.onSurface),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            label,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w500,
-            ),
+    return Material(
+      color: colors.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(AppRadii.lg),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          child: Column(
+            children: [
+              Icon(icon, size: 26, color: colors.onSurface),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                label,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

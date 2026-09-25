@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/models/chat_attachment.dart';
 import '../../core/models/conversation.dart';
 import '../../core/models/message.dart';
 import '../../core/models/message_status.dart';
@@ -17,6 +18,7 @@ import 'chat_state.dart';
 import 'data_providers.dart';
 import 'mock_stream_provider.dart';
 import 'model_provider.dart';
+import 'composer_attachment_provider.dart';
 import 'skill_provider.dart';
 
 final chatProvider = NotifierProvider<ChatNotifier, ChatState>(
@@ -78,9 +80,12 @@ class ChatNotifier extends Notifier<ChatState> {
   }
 
   String startConversation(String firstMessage) {
+    final attachment = ref.read(composerAttachmentProvider);
+    final trimmed = firstMessage.trim();
+    if (trimmed.isEmpty && attachment == null) return '';
     final now = DateTime.now();
     final conversationId = 'c_${now.microsecondsSinceEpoch}';
-    final title = _titleFrom(firstMessage);
+    final title = _titleFrom(trimmed.isEmpty ? attachment!.name : trimmed);
 
     final conversation = Conversation(
       id: conversationId,
@@ -92,9 +97,10 @@ class ChatNotifier extends Notifier<ChatState> {
       id: 'm_${now.microsecondsSinceEpoch}',
       conversationId: conversationId,
       role: MessageRole.user,
-      content: firstMessage.trim(),
+      content: trimmed,
       status: MessageStatus.complete,
       createdAt: now,
+      attachment: attachment,
     );
 
     final assistantMessage = Message(
@@ -122,16 +128,20 @@ class ChatNotifier extends Notifier<ChatState> {
       _beginStream(
         conversationId: conversationId,
         messageId: assistantMessage.id,
-        prompt: userMessage.content,
+        prompt: trimmed,
+        attachment: attachment,
       ),
     );
-    unawaited(_maybeGenerateTitle(conversationId, userMessage.content));
+    if (trimmed.isNotEmpty) {
+      unawaited(_maybeGenerateTitle(conversationId, trimmed));
+    }
     return conversationId;
   }
 
   void sendMessage(String conversationId, String text) {
+    final attachment = ref.read(composerAttachmentProvider);
     final trimmed = text.trim();
-    if (trimmed.isEmpty) return;
+    if (trimmed.isEmpty && attachment == null) return;
 
     final conversation = state.conversationById(conversationId);
     if (conversation == null) return;
@@ -146,6 +156,7 @@ class ChatNotifier extends Notifier<ChatState> {
       content: trimmed,
       status: MessageStatus.complete,
       createdAt: now,
+      attachment: attachment,
     );
 
     final assistantMessage = Message(
@@ -176,6 +187,7 @@ class ChatNotifier extends Notifier<ChatState> {
         conversationId: conversationId,
         messageId: assistantMessage.id,
         prompt: trimmed,
+        attachment: attachment,
       ),
     );
   }
@@ -335,13 +347,15 @@ class ChatNotifier extends Notifier<ChatState> {
     }
 
     String? prompt;
+    ChatAttachment? attachment;
     for (var i = index - 1; i >= 0; i--) {
       if (messages[i].role == MessageRole.user) {
         prompt = messages[i].content;
+        attachment = messages[i].attachment;
         break;
       }
     }
-    if (prompt == null || prompt.isEmpty) return;
+    if ((prompt == null || prompt.isEmpty) && attachment == null) return;
 
     messages[index] = failed.copyWith(
       content: '',
@@ -355,7 +369,8 @@ class ChatNotifier extends Notifier<ChatState> {
       _beginStream(
         conversationId: conversationId,
         messageId: messageId,
-        prompt: prompt,
+        prompt: prompt ?? '',
+        attachment: attachment,
       ),
     );
   }
@@ -364,12 +379,13 @@ class ChatNotifier extends Notifier<ChatState> {
     required String conversationId,
     required String messageId,
     required String prompt,
+    ChatAttachment? attachment,
   }) async {
     final instruction = ref.read(selectedSkillProvider)?.instruction;
-    final history = <({String role, String text})>[];
+    final history = <ChatTurn>[];
     for (final message in state.messagesFor(conversationId)) {
       if (message.id == messageId) continue;
-      if (message.content.isEmpty) continue;
+      if (message.content.isEmpty && message.attachment == null) continue;
       if (message.status != MessageStatus.complete &&
           message.status != MessageStatus.stopped) {
         continue;
@@ -377,6 +393,7 @@ class ChatNotifier extends Notifier<ChatState> {
       history.add((
         role: message.role == MessageRole.assistant ? 'assistant' : 'user',
         text: message.content,
+        attachment: message.attachment,
       ));
     }
     if (history.isNotEmpty && history.last.role == 'user') {
@@ -400,6 +417,7 @@ class ChatNotifier extends Notifier<ChatState> {
             model: model,
             history: history,
             systemInstruction: instruction,
+            attachment: attachment,
           )
           .listen(
             (event) => _onStreamEvent(conversationId, messageId, event),

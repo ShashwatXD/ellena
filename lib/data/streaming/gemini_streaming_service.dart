@@ -1,7 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 
+import '../../core/constants/app_constants.dart';
+import '../../core/models/chat_attachment.dart';
 import '../network/api_exception.dart';
 import '../network/api_repository.dart';
 import 'gemini_response.dart';
@@ -25,8 +29,9 @@ class GeminiStreamingService implements StreamingService {
   Stream<StreamEvent> streamReply({
     required String prompt,
     required String model,
-    List<({String role, String text})> history = const [],
+    List<ChatTurn> history = const [],
     String? systemInstruction,
+    ChatAttachment? attachment,
   }) {
     final generation = _generation;
     return _events(
@@ -35,15 +40,17 @@ class GeminiStreamingService implements StreamingService {
       history: history,
       generation: generation,
       systemInstruction: systemInstruction,
+      attachment: attachment,
     );
   }
 
   Stream<StreamEvent> _events({
     required String prompt,
     required String model,
-    required List<({String role, String text})> history,
+    required List<ChatTurn> history,
     required int generation,
     String? systemInstruction,
+    ChatAttachment? attachment,
   }) async* {
     if (generation != _generation) return;
 
@@ -62,15 +69,11 @@ class GeminiStreamingService implements StreamingService {
         for (final turn in history)
           {
             'role': turn.role == 'assistant' ? 'model' : 'user',
-            'parts': [
-              {'text': turn.text},
-            ],
+            'parts': _parts(turn.text, turn.attachment),
           },
         {
           'role': 'user',
-          'parts': [
-            {'text': prompt},
-          ],
+          'parts': _parts(prompt, attachment),
         },
       ];
 
@@ -125,6 +128,29 @@ class GeminiStreamingService implements StreamingService {
       if (error.isCancel || generation != _generation) return;
       rethrow;
     }
+  }
+
+  List<Map<String, dynamic>> _parts(String text, ChatAttachment? attachment) {
+    final parts = <Map<String, dynamic>>[];
+    final file = _inline(attachment);
+    if (file != null) parts.add(file);
+    final body = text.trim();
+    parts.add({
+      'text': body.isEmpty ? AppConstants.attachmentFallbackPrompt : body,
+    });
+    return parts;
+  }
+
+  Map<String, dynamic>? _inline(ChatAttachment? attachment) {
+    if (attachment == null || attachment.path.isEmpty) return null;
+    final file = File(attachment.path);
+    if (!file.existsSync()) return null;
+    return {
+      'inlineData': {
+        'mimeType': attachment.mimeType,
+        'data': base64Encode(file.readAsBytesSync()),
+      },
+    };
   }
 
   bool _isUserCancel(Object error) {

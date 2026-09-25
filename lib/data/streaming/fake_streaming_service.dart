@@ -1,3 +1,4 @@
+import '../../core/models/chat_attachment.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/models/mock_stream_scenario.dart';
 import '../network/api_exception.dart';
@@ -17,8 +18,9 @@ class FakeStreamingService implements StreamingService {
   Stream<StreamEvent> streamReply({
     required String prompt,
     required String model,
-    List<({String role, String text})> history = const [],
+    List<ChatTurn> history = const [],
     String? systemInstruction,
+    ChatAttachment? attachment,
   }) async* {
     final generation = _generation;
     final scenario = scenarioOf();

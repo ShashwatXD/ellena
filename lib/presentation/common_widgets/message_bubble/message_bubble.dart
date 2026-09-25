@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_streaming_text_markdown/flutter_streaming_text_markdown.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/models/chat_attachment.dart';
 import '../../../core/models/message.dart';
 import '../../../core/models/message_status.dart';
 import '../../providers/providers.dart';

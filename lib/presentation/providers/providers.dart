@@ -1,6 +1,7 @@
 export 'app_config_provider.dart';
 export 'chat_provider.dart';
 export 'composer_quote_provider.dart';
+export 'composer_attachment_provider.dart';
 export 'chat_state.dart';
 export 'data_providers.dart';
 export 'mock_stream_provider.dart';

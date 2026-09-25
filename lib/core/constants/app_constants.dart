@@ -8,6 +8,19 @@ abstract final class AppConstants {
   static const String addCamera = 'Camera';
   static const String addPicture = 'Picture';
   static const String addFile = 'File';
+  static const int maxAttachmentBytes = 5 * 1024 * 1024;
+  static const String attachmentTooLarge =
+      'That file is over 5 MB. Choose a smaller one.';
+  static const String cameraPermissionTitle = 'Camera is off';
+  static const String cameraPermissionBody =
+      'Allow camera access in Settings to send a photo.';
+  static const String photosPermissionTitle = 'Photos are off';
+  static const String photosPermissionBody =
+      'Allow photo access in Settings to send a picture.';
+  static const String openSettingsLabel = 'Open Settings';
+  static const String notNowLabel = 'Not now';
+  static const String attachmentFallbackPrompt = 'Look at the attached file.';
+  static const String removeAttachmentTooltip = 'Remove file';
   static const String addCreateImage = 'Create image';
   static const String addEditImage = 'Edit image';
   static const String addGenerateAudio = 'Generate audio';

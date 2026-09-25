@@ -38,7 +38,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   void _startChat(String text) {
     final trimmed = text.trim();
-    if (trimmed.isEmpty) return;
+    final hasFile = ref.read(composerAttachmentProvider) != null;
+    if (trimmed.isEmpty && !hasFile) return;
     ref.read(chatProvider.notifier).startConversation(trimmed);
   }
 
