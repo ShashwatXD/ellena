@@ -5,12 +5,16 @@ import '../../data/network/api_service.dart';
 import '../../data/cache/chat_cache.dart';
 import '../../data/cache/chat_remote.dart';
 import '../../data/storage/chat_storage.dart';
+import '../../data/history/history_sync.dart';
+import '../../data/storage/install_id.dart';
 import '../../data/storage/storage_service.dart';
 import '../../data/streaming/gemini_streaming_service.dart';
 import '../../data/streaming/gemini_title_service.dart';
 import '../../data/streaming/streaming_service.dart';
 import 'app_config_provider.dart';
 import 'mock_stream_provider.dart';
+
+final installIdProvider = Provider<String?>((ref) => InstallId.read());
 
 final storageServiceProvider = Provider<StorageService>((ref) {
   return StorageService.instance;
@@ -42,7 +46,25 @@ final apiServiceProvider = Provider<ApiService>((ref) {
 });
 
 final apiRepositoryProvider = Provider<ApiRepository>((ref) {
-  return ApiRepository(ref.watch(apiServiceProvider));
+  final config = ref.watch(appConfigProvider);
+  final url = config.reachableHistoryBaseUrl;
+  final installId = InstallId.read();
+  ApiService? history;
+  if (url.isNotEmpty && installId != null) {
+    history = ApiService(baseUrl: url, apiKey: '');
+    ref.onDispose(history.dispose);
+  }
+  return ApiRepository(
+    ref.watch(apiServiceProvider),
+    history: history,
+  );
+});
+
+final historySyncProvider = Provider<HistorySync>((ref) {
+  return HistorySync(
+    api: ref.watch(apiRepositoryProvider),
+    storage: ref.watch(chatStorageProvider),
+  );
 });
 
 final geminiStreamingProvider = Provider<GeminiStreamingService>((ref) {

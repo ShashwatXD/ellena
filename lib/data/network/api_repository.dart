@@ -5,9 +5,15 @@ import 'api_routes.dart';
 import 'api_service.dart';
 
 class ApiRepository {
-  ApiRepository(this._api);
+  ApiRepository(
+    this._api, {
+    ApiService? history,
+  }) : _history = history;
 
   final ApiService _api;
+  final ApiService? _history;
+
+  bool get hasHistory => _history != null;
 
   Future<Result<Response<ResponseBody>>> streamGeminiGenerateContent({
     required String model,
@@ -45,6 +51,54 @@ class ApiRepository {
         },
       ),
       cancelToken: cancelToken,
+    );
+  }
+
+  Future<Result<Map<String, dynamic>>> fetchHistory(String installId) async {
+    final history = _history;
+    if (history == null || installId.isEmpty) return const Success({});
+    final response = await history.get<Map<String, dynamic>>(
+      ApiRoutes.historyUser(installId),
+    );
+    return response.when(
+      success: (value) => Success(value.data ?? {}),
+      failure: (error, stackTrace) => Failure(error, stackTrace),
+    );
+  }
+
+  Future<Result<bool>> putHistoryChat({
+    required String installId,
+    required String chatId,
+    required Map<String, dynamic> body,
+  }) async {
+    final history = _history;
+    if (history == null || installId.isEmpty) return const Success(false);
+    final response = await history.put<void>(
+      ApiRoutes.historyChat(installId, chatId),
+      data: body,
+    );
+    return response.when(
+      success: (_) => const Success(true),
+      failure: (error, stackTrace) => Failure(error, stackTrace),
+    );
+  }
+
+  Future<Result<bool>> deleteHistoryChat({
+    required String installId,
+    required String chatId,
+    String? opId,
+  }) async {
+    final history = _history;
+    if (history == null || installId.isEmpty) return const Success(false);
+    final response = await history.delete<void>(
+      ApiRoutes.historyChat(installId, chatId),
+      queryParameters: {
+        if (opId != null && opId.isNotEmpty) 'opId': opId,
+      },
+    );
+    return response.when(
+      success: (_) => const Success(true),
+      failure: (error, stackTrace) => Failure(error, stackTrace),
     );
   }
 }

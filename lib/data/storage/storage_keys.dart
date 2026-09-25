@@ -7,5 +7,7 @@ abstract final class StorageKeys {
   static const String refreshToken = 'refresh_token';
 
   static const String themeMode = 'theme_mode';
+  static const String installId = 'install_id';
+  static const String historyOps = 'history_ops';
   static const String onboardingDone = 'onboarding_done';
 }

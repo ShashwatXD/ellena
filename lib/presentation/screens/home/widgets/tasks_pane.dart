@@ -47,52 +47,66 @@ class TasksPane extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(
-                child: visible.isEmpty
-                    ? Center(
-                        child: noHistory && !searching
-                            ? _StartNewChat(
-                                large: true,
-                                onPressed: () => _newChat(ref),
-                              )
-                            : Text(
-                                AppConstants.noSearchMatches,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: colors.onSurfaceVariant,
+                child: RefreshIndicator(
+                  onRefresh: () =>
+                      ref.read(chatProvider.notifier).reloadHistory(),
+                  child: visible.isEmpty
+                      ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: [
+                            SizedBox(
+                              height: MediaQuery.sizeOf(context).height * 0.45,
+                              child: Center(
+                                child: noHistory && !searching
+                                    ? _StartNewChat(
+                                        large: true,
+                                        onPressed: () => _newChat(ref),
+                                      )
+                                    : Text(
+                                        AppConstants.noSearchMatches,
+                                        style: theme.textTheme.bodyMedium
+                                            ?.copyWith(
+                                          color: colors.onSurfaceVariant,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(
+                            0,
+                            AppSpacing.xs,
+                            0,
+                            88,
+                          ),
+                          children: [
+                            if (pinned.isNotEmpty) ...[
+                              const _SectionLabel(
+                                label: AppConstants.pinnedSection,
+                              ),
+                              ...pinned.map(
+                                (c) => _ConversationTile(
+                                  conversation: c,
+                                  selected: c.id == activeId,
                                 ),
                               ),
-                      )
-                    : ListView(
-                        padding: const EdgeInsets.fromLTRB(
-                          0,
-                          AppSpacing.xs,
-                          0,
-                          88,
+                            ],
+                            if (recent.isNotEmpty) ...[
+                              const _SectionLabel(
+                                label: AppConstants.recentSection,
+                              ),
+                              ...recent.map(
+                                (c) => _ConversationTile(
+                                  conversation: c,
+                                  selected: c.id == activeId,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
-                        children: [
-                          if (pinned.isNotEmpty) ...[
-                            const _SectionLabel(
-                              label: AppConstants.pinnedSection,
-                            ),
-                            ...pinned.map(
-                              (c) => _ConversationTile(
-                                conversation: c,
-                                selected: c.id == activeId,
-                              ),
-                            ),
-                          ],
-                          if (recent.isNotEmpty) ...[
-                            const _SectionLabel(
-                              label: AppConstants.recentSection,
-                            ),
-                            ...recent.map(
-                              (c) => _ConversationTile(
-                                conversation: c,
-                                selected: c.id == activeId,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
+                ),
               ),
             ],
           ),

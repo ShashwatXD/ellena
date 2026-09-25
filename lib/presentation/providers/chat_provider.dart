@@ -10,6 +10,9 @@ import '../../core/models/message_status.dart';
 import '../../core/result/result.dart';
 import '../../data/network/api_exception.dart';
 import '../../data/cache/chat_cache.dart';
+import '../../data/history/history_op.dart';
+import '../../data/history/history_sync.dart';
+import '../../data/network/api_interceptor.dart';
 import '../../data/storage/chat_storage.dart';
 import '../../data/streaming/message_stream.dart';
 import '../../data/streaming/stream_event.dart';
@@ -31,10 +34,13 @@ class ChatNotifier extends Notifier<ChatState> {
   final Map<String, MessageStream> _streams = {};
   final Map<String, Timer> _persistDebounce = {};
   final Set<String> _titleRequestedIds = {};
+  StreamSubscription<dynamic>? _networkSub;
+  bool? _sawNetwork;
   StreamingService? _liveService;
 
   ChatStorage get _storage => ref.read(chatStorageProvider);
   ChatCache get _cache => ref.read(chatCacheProvider);
+  HistorySync get _history => ref.read(historySyncProvider);
 
   @override
   ChatState build() {
@@ -48,11 +54,27 @@ class ChatNotifier extends Notifier<ChatState> {
       for (final timer in _persistDebounce.values) {
         timer.cancel();
       }
+      unawaited(_networkSub?.cancel());
       _streams.clear();
       _persistDebounce.clear();
     });
 
+    _networkSub = watchNetwork(_onNetwork);
+    unawaited(_pullHistory());
     return ChatState(conversations: _cache.readConversations());
+  }
+
+  Future<void> reloadHistory() => _pullHistory();
+
+  void _onNetwork(Result<bool> status) {
+    status.when(
+      success: (online) {
+        final previous = _sawNetwork;
+        _sawNetwork = online;
+        if (previous == false && online) unawaited(_pullHistory());
+      },
+      failure: (error, stackTrace) => _sawNetwork = false,
+    );
   }
 
   Future<void> _persistConversation(String conversationId) async {
@@ -74,9 +96,24 @@ class ChatNotifier extends Notifier<ChatState> {
     });
   }
 
-  Future<void> _flushPersist(String conversationId) async {
+  Future<void> _flushPersist(
+    String conversationId, {
+    String kind = HistoryOpKind.put,
+  }) async {
     _persistDebounce.remove(conversationId)?.cancel();
     await _persistConversation(conversationId);
+    await _history.commit(conversationId, kind);
+  }
+
+  Future<void> _pullHistory() async {
+    final changed = await _history.sync();
+    if (changed == null) return;
+    for (final id in changed) {
+      _cache.invalidateRecord(id);
+      _cache.invalidateMessages(id);
+    }
+    _cache.invalidateList();
+    state = state.copyWith(conversations: _cache.readConversations());
   }
 
   String startConversation(String firstMessage) {
@@ -122,7 +159,12 @@ class ChatNotifier extends Notifier<ChatState> {
       messagesByConversation: _cache.windows(),
       activeConversationId: conversationId,
     );
-    unawaited(_reloadListAfter(_flushPersist(conversationId), conversationId));
+    unawaited(
+      _reloadListAfter(
+        _flushPersist(conversationId, kind: HistoryOpKind.send),
+        conversationId,
+      ),
+    );
 
     unawaited(
       _beginStream(
@@ -180,7 +222,12 @@ class ChatNotifier extends Notifier<ChatState> {
       ),
       messagesByConversation: _cache.windows(),
     );
-    unawaited(_reloadListAfter(_flushPersist(conversationId), conversationId));
+    unawaited(
+      _reloadListAfter(
+        _flushPersist(conversationId, kind: HistoryOpKind.send),
+        conversationId,
+      ),
+    );
 
     unawaited(
       _beginStream(
@@ -238,6 +285,7 @@ class ChatNotifier extends Notifier<ChatState> {
     _streams.clear();
     _persistDebounce.clear();
     await _storage.clear();
+    await _history.discard();
     _cache.invalidateAll();
     state = const ChatState();
   }
@@ -270,7 +318,14 @@ class ChatNotifier extends Notifier<ChatState> {
     _cache.invalidateRecord(conversationId);
     _cache.invalidateList();
     unawaited(
-      _reloadListAfter(_storage.saveConversation(updated), conversationId),
+      _reloadListAfter(
+        _storeThenCommit(
+          conversationId,
+          HistoryOpKind.pin,
+          _storage.saveConversation(updated),
+        ),
+        conversationId,
+      ),
     );
   }
 
@@ -288,7 +343,14 @@ class ChatNotifier extends Notifier<ChatState> {
     _cache.invalidateRecord(conversationId);
     _cache.invalidateList();
     unawaited(
-      _reloadListAfter(_storage.saveConversation(updated), conversationId),
+      _reloadListAfter(
+        _storeThenCommit(
+          conversationId,
+          HistoryOpKind.rename,
+          _storage.saveConversation(updated),
+        ),
+        conversationId,
+      ),
     );
   }
 
@@ -325,6 +387,7 @@ class ChatNotifier extends Notifier<ChatState> {
       clearActiveConversationId: clearActive,
     );
     await _storage.deleteConversation(conversationId);
+    await _history.commit(conversationId, HistoryOpKind.delete);
     _cache.invalidateRecord(conversationId);
     _cache.invalidateMessages(conversationId);
     _cache.invalidateList();
@@ -570,6 +633,17 @@ class ChatNotifier extends Notifier<ChatState> {
     _cache.invalidateList();
     if (state.conversationById(conversationId) == null) return;
     state = state.copyWith(conversations: _cache.readConversations());
+  }
+
+  Future<Result<bool>> _storeThenCommit(
+    String conversationId,
+    String kind,
+    Future<Result<bool>> saved,
+  ) async {
+    final result = await saved;
+    if (result.isFailure) return result;
+    await _history.commit(conversationId, kind);
+    return result;
   }
 
   List<Conversation> _replaceConversation(Conversation updated) {

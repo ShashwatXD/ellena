@@ -67,6 +67,36 @@ class ApiService {
     );
   }
 
+  Future<Result<Response<T>>> put<T>(
+    String path, {
+    Object? data,
+    Options? options,
+    CancelToken? cancelToken,
+  }) {
+    return _send(
+      method: 'PUT',
+      path: path,
+      data: data,
+      options: options,
+      cancelToken: cancelToken,
+    );
+  }
+
+  Future<Result<Response<T>>> delete<T>(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+    CancelToken? cancelToken,
+  }) {
+    return _send(
+      method: 'DELETE',
+      path: path,
+      queryParameters: queryParameters,
+      options: options,
+      cancelToken: cancelToken,
+    );
+  }
+
   Future<Result<Response<T>>> _send<T>({
     required String method,
     required String path,

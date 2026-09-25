@@ -130,6 +130,15 @@ class AccountScreen extends ConsumerWidget {
                             color: colors.onSurfaceVariant,
                           ),
                         ),
+                        if (ref.watch(installIdProvider) != null) ...[
+                          const SizedBox(height: 2),
+                          SelectableText(
+                            ref.watch(installIdProvider)!,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: colors.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),

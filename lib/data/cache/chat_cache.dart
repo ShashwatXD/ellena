@@ -4,6 +4,7 @@ import '../../core/models/conversation.dart';
 import '../../core/models/message.dart';
 import '../storage/chat_storage.dart';
 import 'chat_remote.dart';
+import 'history_choice.dart';
 
 class ChatCache {
   ChatCache({
@@ -45,21 +46,36 @@ class ChatCache {
     if (cached != null) return cached;
 
     final local = _storage.readConversation(id);
-    if (local != null) {
-      _records[id] = local;
-      return local;
+    final remote = _remote.conversation(id).valueOrNull;
+    final chosen = switch ((local, remote)) {
+      (null, null) => null,
+      (final stored?, null) => stored,
+      (null, final fetched?) => fetched,
+      (final stored?, final fetched?) => preferLater(
+          local: stored,
+          remote: fetched,
+        ),
+    };
+    if (chosen == null) return null;
+    _records[id] = chosen;
+    final remoteWon = remote != null && identical(chosen, remote) && chosen != local;
+    if (local == null || remoteWon) {
+      final list = _list;
+      if (list != null) {
+        _list = [...list.where((item) => item.id != id), chosen]
+          ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      }
+      unawaited(_storage.saveConversation(chosen));
+      if (remoteWon) _keepRemoteMessages(id);
     }
+    return chosen;
+  }
 
-    final fetched = _remote.conversation(id).valueOrNull;
-    if (fetched == null) return null;
-    _records[id] = fetched;
-    final list = _list;
-    if (list != null) {
-      _list = [...list.where((item) => item.id != id), fetched]
-        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-    }
-    unawaited(_storage.saveConversation(fetched));
-    return fetched;
+  void _keepRemoteMessages(String id) {
+    final fetched = _remote.messages(id).valueOrNull;
+    if (fetched == null) return;
+    holdMessages(id, fetched);
+    unawaited(_storage.saveMessages(id, fetched));
   }
 
   List<Message> readMessages(String conversationId) {

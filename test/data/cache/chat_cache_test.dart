@@ -89,7 +89,21 @@ void main() {
 
     cache.invalidateRecord('remote');
     expect(cache.readConversation('remote')?.title, 'Hive title');
-    expect(remote.conversationReads, 1);
+    expect(remote.conversationReads, 2);
+  });
+
+  test('history keeps the copy with the later update', () async {
+    final older = DateTime.utc(2026, 9, 25);
+    final newer = older.add(const Duration(hours: 2));
+    await storage.saveConversation(chat('shared', 'Local title', older));
+    final remote = _Remote()..conversationRow = chat('shared', 'Server title', newer);
+    final cache = ChatCache(storage: storage, remote: remote);
+
+    expect(cache.readConversation('shared')?.title, 'Server title');
+
+    await pumpEventQueue();
+    cache.invalidateRecord('shared');
+    expect(storage.readConversation('shared')?.title, 'Server title');
   });
 
   test('rename invalidates the list the drawer reads', () async {

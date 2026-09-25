@@ -11,6 +11,7 @@ class AppConfig {
     required this.geminiApiKey,
     required this.geminiModel,
     required this.enableFakeStream,
+    required this.historyBaseUrl,
   });
 
   static AppConfig? _instance;
@@ -47,6 +48,7 @@ class AppConfig {
       enableFakeStream: (json['ENABLE_FAKE_STREAM'] as String? ?? 'true')
               .toLowerCase() ==
           'true',
+      historyBaseUrl: json['HISTORY_BASE_URL'] as String? ?? '',
     );
   }
 
@@ -67,6 +69,14 @@ class AppConfig {
   final String geminiApiKey;
   final String geminiModel;
   final bool enableFakeStream;
+  final String historyBaseUrl;
 
   bool get hasGeminiKey => geminiApiKey.isNotEmpty;
+
+  String get reachableHistoryBaseUrl {
+    if (historyBaseUrl.isEmpty || !isAndroid) return historyBaseUrl;
+    return historyBaseUrl
+        .replaceFirst('://localhost', '://10.0.2.2')
+        .replaceFirst('://127.0.0.1', '://10.0.2.2');
+  }
 }

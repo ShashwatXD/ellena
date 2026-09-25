@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
 import 'core/config/app_config.dart';
+import 'data/storage/install_id.dart';
 import 'data/storage/storage_service.dart';
 
 Future<void> main() async {
@@ -19,6 +20,7 @@ Future<void> main() async {
   );
   await AppConfig.load();
   await StorageService.instance.init();
+  await InstallId.ensure();
   runApp(
     const ProviderScope(
       child: EllenaApp(),
