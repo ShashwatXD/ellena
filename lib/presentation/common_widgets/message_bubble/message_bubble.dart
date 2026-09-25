@@ -13,7 +13,8 @@ import '../../theme/app_motion.dart';
 import '../../theme/app_radii.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
-import '../clipboard_copy.dart';
+import '../../utils/clipboard_copy.dart';
+import '../../utils/open_link.dart';
 import '../message_actions_menu.dart';
 import '../select_text_sheet.dart';
 
@@ -157,6 +158,8 @@ class _MessageBlock extends StatelessWidget {
 
     return Align(
       alignment: user ? Alignment.centerRight : Alignment.centerLeft,
+      widthFactor: 1,
+      heightFactor: 1,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxWidth),
         child: Builder(

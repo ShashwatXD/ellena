@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/models/conversation.dart';
+import '../../../common_widgets/hold_menu.dart';
 import '../../../providers/providers.dart';
 import '../../../theme/app_motion.dart';
 import '../../../theme/app_radii.dart';
@@ -265,6 +266,64 @@ class _ConversationTile extends ConsumerWidget {
     await ref.read(chatProvider.notifier).deleteConversation(conversation.id);
   }
 
+  double _taskPreviewHeight(BuildContext context, double width) {
+    final style = Theme.of(
+      context,
+    ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600);
+    final pinWidth = conversation.isPinned ? 22.0 : 0.0;
+    final textWidth = (width - 48 - pinWidth).clamp(0.0, width);
+    final painter = TextPainter(
+      text: TextSpan(text: conversation.title, style: style),
+      maxLines: 3,
+      textDirection: Directionality.of(context),
+    )..layout(maxWidth: textWidth);
+    return painter.height + 56;
+  }
+
+  Future<void> _openActions(BuildContext context, WidgetRef ref) async {
+    final box = context.findRenderObject()! as RenderBox;
+    final anchor = box.localToGlobal(Offset.zero) & box.size;
+    HapticFeedback.mediumImpact();
+    final action = await HoldMenu.show<_ChatAction>(
+      context,
+      anchor: anchor,
+      preferredHeight: _taskPreviewHeight(context, box.size.width),
+      preview: _LiftedTask(
+        title: conversation.title,
+        pinned: conversation.isPinned,
+      ),
+      items: [
+        HoldMenuItem(
+          value: _ChatAction.pin,
+          label: conversation.isPinned
+              ? AppConstants.unpinChatLabel
+              : AppConstants.pinChatLabel,
+          icon: Icons.push_pin_outlined,
+        ),
+        const HoldMenuItem(
+          value: _ChatAction.rename,
+          label: AppConstants.renameChatLabel,
+          icon: Icons.edit_outlined,
+        ),
+        const HoldMenuItem(
+          value: _ChatAction.delete,
+          label: AppConstants.deleteChatLabel,
+          icon: Icons.delete_outline,
+          danger: true,
+        ),
+      ],
+    );
+    if (!context.mounted || action == null) return;
+    switch (action) {
+      case _ChatAction.pin:
+        ref.read(chatProvider.notifier).togglePin(conversation.id);
+      case _ChatAction.rename:
+        await _rename(context, ref);
+      case _ChatAction.delete:
+        await _delete(context, ref);
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
@@ -284,8 +343,9 @@ class _ConversationTile extends ConsumerWidget {
             ref.read(chatProvider.notifier).openConversation(conversation.id);
             ref.read(workspaceTabProvider.notifier).select(WorkspaceTab.agent);
           },
+          onLongPress: () => _openActions(context, ref),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
+            padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
             child: Row(
               children: [
                 if (conversation.isPinned) ...[
@@ -297,65 +357,14 @@ class _ConversationTile extends ConsumerWidget {
                   const SizedBox(width: 8),
                 ],
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: Text(
-                      conversation.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        fontWeight: selected
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                      ),
+                  child: Text(
+                    conversation.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                     ),
                   ),
-                ),
-                PopupMenuButton<_ChatAction>(
-                  tooltip: AppConstants.chatActionsTooltip,
-                  padding: EdgeInsets.zero,
-                  icon: Icon(
-                    Icons.more_horiz_rounded,
-                    size: 20,
-                    color: colors.onSurfaceVariant.withValues(alpha: 0.85),
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadii.md),
-                  ),
-                  onSelected: (action) async {
-                    HapticFeedback.selectionClick();
-                    switch (action) {
-                      case _ChatAction.pin:
-                        ref
-                            .read(chatProvider.notifier)
-                            .togglePin(conversation.id);
-                      case _ChatAction.rename:
-                        await _rename(context, ref);
-                      case _ChatAction.delete:
-                        await _delete(context, ref);
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: _ChatAction.pin,
-                      child: Text(
-                        conversation.isPinned
-                            ? AppConstants.unpinChatLabel
-                            : AppConstants.pinChatLabel,
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: _ChatAction.rename,
-                      child: Text(AppConstants.renameChatLabel),
-                    ),
-                    PopupMenuItem(
-                      value: _ChatAction.delete,
-                      child: Text(
-                        AppConstants.deleteChatLabel,
-                        style: TextStyle(color: colors.error),
-                      ),
-                    ),
-                  ],
                 ),
               ],
             ),
@@ -367,6 +376,57 @@ class _ConversationTile extends ConsumerWidget {
 }
 
 enum _ChatAction { pin, rename, delete }
+
+class _LiftedTask extends StatelessWidget {
+  const _LiftedTask({required this.title, required this.pinned});
+
+  final String title;
+  final bool pinned;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        boxShadow: [
+          BoxShadow(
+            color: colors.shadow.withValues(alpha: 0.22),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
+        child: Row(
+          children: [
+            if (pinned) ...[
+              Icon(
+                Icons.push_pin_rounded,
+                size: 14,
+                color: colors.onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
+            ],
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 3,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _RenameChatDialog extends StatefulWidget {
   const _RenameChatDialog({required this.initialTitle});

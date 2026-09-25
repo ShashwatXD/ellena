@@ -43,7 +43,6 @@ abstract final class AppConstants {
   static const String newChatTooltip = 'New chat';
   static const String newChatLabel = 'New chat';
   static const String startNewChatLabel = 'Start new chat';
-  static const String chatActionsTooltip = 'Chat actions';
   static const String pinChatLabel = 'Pin';
   static const String unpinChatLabel = 'Unpin';
   static const String renameChatLabel = 'Rename';
