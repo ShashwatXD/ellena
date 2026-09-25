@@ -8,7 +8,7 @@ const accountMenuItems = <({IconData icon, String label})>[
   (icon: Icons.mail_outline_rounded, label: AppConstants.settingsMail),
   (icon: Icons.storage_outlined, label: AppConstants.settingsDataControls),
   (icon: Icons.web_asset_rounded, label: AppConstants.settingsCloudBrowser),
-  (icon: Icons.extension_outlined, label: AppConstants.settingsSkills),
+  (icon: Icons.hub_outlined, label: AppConstants.skillHubTitle),
   (icon: Icons.power_outlined, label: AppConstants.settingsConnectors),
   (
     icon: Icons.electrical_services_outlined,

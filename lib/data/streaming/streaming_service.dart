@@ -7,6 +7,7 @@ abstract interface class StreamingService {
     required String prompt,
     required String model,
     List<({String role, String text})> history = const [],
+    String? systemInstruction,
   });
 
   Future<void> cancel();

@@ -1,6 +1,6 @@
 import '../../core/constants/app_constants.dart';
 import '../../core/models/mock_stream_scenario.dart';
-import '../api/api_exception.dart';
+import '../network/api_exception.dart';
 import 'stream_event.dart';
 import 'streaming_service.dart';
 
@@ -18,6 +18,7 @@ class FakeStreamingService implements StreamingService {
     required String prompt,
     required String model,
     List<({String role, String text})> history = const [],
+    String? systemInstruction,
   }) async* {
     final generation = _generation;
     final scenario = scenarioOf();

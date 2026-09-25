@@ -106,7 +106,9 @@ class _AgentHome extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
-                    minHeight: constraints.maxHeight - AppSpacing.xxl,
+                    minHeight: constraints.maxHeight > AppSpacing.xxl
+                        ? constraints.maxHeight - AppSpacing.xxl
+                        : 0,
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,

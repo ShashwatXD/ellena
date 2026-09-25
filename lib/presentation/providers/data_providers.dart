@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/api/api_repository.dart';
-import '../../data/api/api_service.dart';
+import '../../data/network/api_repository.dart';
+import '../../data/network/api_service.dart';
 import '../../data/cache/chat_cache.dart';
 import '../../data/cache/chat_remote.dart';
 import '../../data/storage/chat_storage.dart';

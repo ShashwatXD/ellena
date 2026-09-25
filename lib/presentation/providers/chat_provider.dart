@@ -7,7 +7,7 @@ import '../../core/models/conversation.dart';
 import '../../core/models/message.dart';
 import '../../core/models/message_status.dart';
 import '../../core/result/result.dart';
-import '../../data/api/api_exception.dart';
+import '../../data/network/api_exception.dart';
 import '../../data/cache/chat_cache.dart';
 import '../../data/storage/chat_storage.dart';
 import '../../data/streaming/message_stream.dart';
@@ -17,6 +17,7 @@ import 'chat_state.dart';
 import 'data_providers.dart';
 import 'mock_stream_provider.dart';
 import 'model_provider.dart';
+import 'skill_provider.dart';
 
 final chatProvider = NotifierProvider<ChatNotifier, ChatState>(
   ChatNotifier.new,
@@ -364,6 +365,7 @@ class ChatNotifier extends Notifier<ChatState> {
     required String messageId,
     required String prompt,
   }) async {
+    final instruction = ref.read(selectedSkillProvider)?.instruction;
     final history = <({String role, String text})>[];
     for (final message in state.messagesFor(conversationId)) {
       if (message.id == messageId) continue;
@@ -393,7 +395,12 @@ class ChatNotifier extends Notifier<ChatState> {
 
     try {
       live.subscription = service
-          .streamReply(prompt: prompt, model: model, history: history)
+          .streamReply(
+            prompt: prompt,
+            model: model,
+            history: history,
+            systemInstruction: instruction,
+          )
           .listen(
             (event) => _onStreamEvent(conversationId, messageId, event),
             onError: (Object error, StackTrace stackTrace) {

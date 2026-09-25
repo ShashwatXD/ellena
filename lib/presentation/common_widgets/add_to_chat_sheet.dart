@@ -55,9 +55,14 @@ class AddToChatSheet extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.md),
-          const _SheetRow(
+          _SheetRow(
             icon: Icons.hub_outlined,
             label: AppConstants.settingsSkills,
+            onTap: () {
+              HapticFeedback.selectionClick();
+              Navigator.pop(context);
+              ref.read(skillPickerProvider.notifier).open();
+            },
           ),
           Divider(),
           _SheetRow(

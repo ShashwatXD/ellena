@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/models/agent_skill.dart';
+import '../../navigation/app_routes.dart';
 import '../../providers/providers.dart';
 import '../../theme/app_breakpoints.dart';
 import '../../theme/app_motion.dart';
@@ -12,6 +15,9 @@ import '../add_to_chat_sheet.dart';
 import '../app_bottom_sheet.dart';
 import '../connectors_sheet.dart';
 import 'composer_quote_bar.dart';
+import 'composer_skill_chip.dart';
+import 'skill_picker.dart';
+import 'slash_menu.dart';
 
 part 'composer_round_button.dart';
 
@@ -44,9 +50,13 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
   late final AnimationController _pulse;
 
   bool get _canSend =>
-      widget.enabled &&
-      !widget.isStreaming &&
-      _controller.text.trim().isNotEmpty;
+      widget.enabled && !widget.isStreaming && _body(_controller.text).isNotEmpty;
+
+  String? get _slashQuery {
+    final match = RegExp(r'(?:^|\s)/([^\s]*)$').firstMatch(_controller.text);
+    if (match == null) return null;
+    return match.group(1) ?? '';
+  }
 
   bool get _expanded =>
       _focusNode.hasFocus || _controller.text.isNotEmpty || widget.isStreaming;
@@ -54,7 +64,7 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
   @override
   void initState() {
     super.initState();
-    _focusNode.addListener(() => setState(() {}));
+    _focusNode.addListener(_onFocus);
     _pulse = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
@@ -81,15 +91,55 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
     super.dispose();
   }
 
+  void _onFocus() {
+    if (!_focusNode.hasFocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _focusNode.hasFocus) return;
+        ref.read(skillPickerProvider.notifier).close();
+      });
+    }
+    setState(() {});
+  }
+
   void _submit() {
     if (!_canSend) return;
     HapticFeedback.lightImpact();
+    _applyExactSlash();
     final quote = ref.read(composerQuoteProvider);
-    final text = _outgoing(_controller.text, quote);
+    final text = _outgoing(_body(_controller.text), quote);
     _controller.clear();
     ref.read(composerQuoteProvider.notifier).clear();
+    ref.read(skillPickerProvider.notifier).close();
     setState(() {});
     widget.onSend(text);
+  }
+
+  void _applyExactSlash() {
+    final query = _slashQuery?.trim().toLowerCase();
+    if (query == null || query.isEmpty) return;
+    for (final skill in ref.read(mySkillsProvider)) {
+      if (skill.name.toLowerCase() == query) {
+        ref.read(selectedSkillProvider.notifier).select(skill);
+        return;
+      }
+    }
+  }
+
+  void _selectSkill(AgentSkill skill) {
+    HapticFeedback.selectionClick();
+    final stripped = _body(_controller.text);
+    _controller.value = TextEditingValue(
+      text: stripped,
+      selection: TextSelection.collapsed(offset: stripped.length),
+    );
+    ref.read(selectedSkillProvider.notifier).select(skill);
+    ref.read(skillPickerProvider.notifier).close();
+    _focusNode.requestFocus();
+    setState(() {});
+  }
+
+  String _body(String typed) {
+    return typed.replaceFirst(RegExp(r'(^|\s)/[^\s]*$'), '').trim();
   }
 
   String _outgoing(String typed, String? quote) {
@@ -119,6 +169,25 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
     _openSheet((_) => const ConnectorsSheet());
   }
 
+  void _openSlashSkills() {
+    HapticFeedback.selectionClick();
+    final body = _body(_controller.text);
+    final text = body.isEmpty ? '/' : '$body /';
+    _controller.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+    ref.read(skillPickerProvider.notifier).open();
+    _focusNode.requestFocus();
+  }
+
+  void _openSkillHub() {
+    HapticFeedback.selectionClick();
+    ref.read(skillPickerProvider.notifier).close();
+    _focusNode.unfocus();
+    context.push(AppRoutes.skillHub);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -128,9 +197,19 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
     final motion = AppMotion.of(context, AppMotion.normal);
     final expanded = _expanded;
     final quote = ref.watch(composerQuoteProvider);
+    final skill = ref.watch(selectedSkillProvider);
+    final slash = _slashQuery;
+    final skillsOpen = ref.watch(skillPickerProvider);
+    final showSlash = controlsEnabled &&
+        _focusNode.hasFocus &&
+        (skillsOpen || slash != null);
 
     ref.listen(composerQuoteProvider, (previous, next) {
       if (next == null || next == previous) return;
+      _focusNode.requestFocus();
+    });
+    ref.listen(skillPickerProvider, (previous, next) {
+      if (next != true || next == previous) return;
       _focusNode.requestFocus();
     });
 
@@ -155,8 +234,15 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
         curve: AppMotion.standard,
         alignment: Alignment.bottomCenter,
         child: expanded
-            ? _expandedBody(theme, colors, isDark, controlsEnabled, quote)
-            : _collapsedBody(theme, colors, controlsEnabled, quote),
+            ? _expandedBody(
+                theme,
+                colors,
+                isDark,
+                controlsEnabled,
+                quote,
+                skill,
+              )
+            : _collapsedBody(theme, colors, controlsEnabled, quote, skill),
       ),
     );
 
@@ -177,7 +263,24 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
           AppBreakpoints.pagePadding(context),
           AppSpacing.sm,
         ),
-        child: chrome,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (showSlash)
+              skillsOpen
+                  ? SkillPicker(
+                      query: slash ?? '',
+                      skills: ref.watch(mySkillsProvider),
+                      onSelected: _selectSkill,
+                      onOpenHub: _openSkillHub,
+                    )
+                  : SlashMenu(
+                      query: slash ?? '',
+                      onSkills: _openSlashSkills,
+                    ),
+            chrome,
+          ],
+        ),
       ),
     );
   }
@@ -187,6 +290,7 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
     ColorScheme colors,
     bool controlsEnabled,
     String? quote,
+    AgentSkill? skill,
   ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxs),
@@ -197,6 +301,14 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
             tooltip: AppConstants.addToChatTitle,
             onPressed: controlsEnabled ? _openAddSheet : null,
           ),
+          if (skill != null)
+            Flexible(
+              child: ComposerSkillChip(
+                skill: skill,
+                expanded: false,
+                onClear: () => ref.read(selectedSkillProvider.notifier).clear(),
+              ),
+            ),
           Expanded(
             child: _input(
               theme: theme,
@@ -230,6 +342,7 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
     bool isDark,
     bool controlsEnabled,
     String? quote,
+    AgentSkill? skill,
   ) {
     final motion = AppMotion.of(context, AppMotion.normal);
 
@@ -237,6 +350,12 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (skill != null)
+          ComposerSkillChip(
+            skill: skill,
+            expanded: true,
+            onClear: () => ref.read(selectedSkillProvider.notifier).clear(),
+          ),
         if (quote != null)
           ComposerQuoteBar(
             text: quote,
@@ -355,6 +474,14 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
       maxLines: maxLines,
       textInputAction: TextInputAction.newline,
       onChanged: (_) => setState(() {}),
+      onTapOutside: (event) {
+        final box = context.findRenderObject() as RenderBox?;
+        if (box != null && box.attached && box.hasSize) {
+          final local = box.globalToLocal(event.position);
+          if ((Offset.zero & box.size).contains(local)) return;
+        }
+        _focusNode.unfocus();
+      },
       style: theme.textTheme.bodyLarge,
       cursorColor: colors.onSurface,
       decoration: InputDecoration(

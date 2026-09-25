@@ -76,6 +76,8 @@ abstract final class AppConstants {
   static const String selectTextLabel = 'Select text';
   static const String reportLabel = 'Report';
   static const String removeQuoteTooltip = 'Remove quote';
+  static const String removeSkillTooltip = 'Remove skill';
+  static const String noSkillsLabel = 'No skills';
   static const String copyTooltip = 'Copy';
   static const String geminiRequestFailed = 'Request failed';
   static const String rateLimitReached = 'Rate limit reached';
@@ -119,6 +121,16 @@ abstract final class AppConstants {
   static const String settingsDataControls = 'Data controls';
   static const String settingsCloudBrowser = 'Cloud Browser';
   static const String settingsSkills = 'Skills';
+  static const String skillHubTitle = 'Skill Hub';
+  static const String skillHubSubtitle =
+      'Skills change how Ellena handles a message.';
+  static const String skillHubSearchHint = 'Search skills';
+  static const String skillHubMySkills = 'My skills';
+  static const String skillHubExplore = 'Explore more';
+  static const String skillHubAdd = 'Add to my skills';
+  static const String skillHubAdded = 'Added';
+  static const String skillHubCreate = 'Create a skill';
+  static const String skillHubOpenTooltip = 'Skill Hub';
   static const String settingsConnectors = 'Connectors';
   static const String settingsIntegrations = 'Integrations';
   static const String deleteAllChatsLabel = 'Delete all chats';

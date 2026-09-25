@@ -218,7 +218,15 @@ class AccountScreen extends ConsumerWidget {
                   AccountMenuTile(
                     icon: accountMenuItems[i].icon,
                     label: accountMenuItems[i].label,
-                    onTap: () => _mockTap(context),
+                    onTap: () {
+                      if (accountMenuItems[i].label ==
+                          AppConstants.skillHubTitle) {
+                        HapticFeedback.selectionClick();
+                        context.push(AppRoutes.skillHub);
+                        return;
+                      }
+                      _mockTap(context);
+                    },
                   ),
                 ],
               ],

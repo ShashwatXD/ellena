@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 
-import '../api/api_exception.dart';
-import '../api/api_repository.dart';
+import '../network/api_exception.dart';
+import '../network/api_repository.dart';
 import 'gemini_response.dart';
 import 'gemini_sse_parser.dart';
 import 'stream_event.dart';
@@ -26,6 +26,7 @@ class GeminiStreamingService implements StreamingService {
     required String prompt,
     required String model,
     List<({String role, String text})> history = const [],
+    String? systemInstruction,
   }) {
     final generation = _generation;
     return _events(
@@ -33,6 +34,7 @@ class GeminiStreamingService implements StreamingService {
       model: model,
       history: history,
       generation: generation,
+      systemInstruction: systemInstruction,
     );
   }
 
@@ -41,6 +43,7 @@ class GeminiStreamingService implements StreamingService {
     required String model,
     required List<({String role, String text})> history,
     required int generation,
+    String? systemInstruction,
   }) async* {
     if (generation != _generation) return;
 
@@ -54,6 +57,7 @@ class GeminiStreamingService implements StreamingService {
 
       bool alive() => generation == _generation && !token.isCancelled;
 
+      final instruction = systemInstruction?.trim();
       final contents = <Map<String, dynamic>>[
         for (final turn in history)
           {
@@ -70,9 +74,19 @@ class GeminiStreamingService implements StreamingService {
         },
       ];
 
+      final requestBody = <String, dynamic>{
+        'contents': contents,
+        if (instruction != null && instruction.isNotEmpty)
+          'systemInstruction': {
+            'parts': [
+              {'text': instruction},
+            ],
+          },
+      };
+
       final result = await _repository.streamGeminiGenerateContent(
         model: model,
-        body: {'contents': contents},
+        body: requestBody,
         cancelToken: token,
       );
       if (!alive()) return;

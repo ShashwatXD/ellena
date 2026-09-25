@@ -1,6 +1,6 @@
 import '../../core/constants/app_constants.dart';
 import '../../core/models/llm_model.dart';
-import '../api/api_repository.dart';
+import '../network/api_repository.dart';
 import 'gemini_response.dart';
 
 class GeminiTitleService {
