@@ -1,5 +1,6 @@
 import '../../core/constants/app_constants.dart';
 import '../../core/models/mock_stream_scenario.dart';
+import '../api/api_exception.dart';
 import 'stream_event.dart';
 import 'streaming_service.dart';
 
@@ -23,6 +24,7 @@ class FakeStreamingService implements StreamingService {
     final chunks = scenario.chunks;
     final delay = scenario.chunkDelay;
     final failAfter = scenario.failAfterYields;
+    final failure = _failureFor(scenario.failure);
     var seqCursor = StreamCursor(generation);
     var yielded = 0;
 
@@ -32,7 +34,7 @@ class FakeStreamingService implements StreamingService {
       if (failAfter != null && yielded >= failAfter) {
         await Future<void>.delayed(delay);
         if (!alive()) return;
-        throw StateError(AppConstants.mockStreamFailed);
+        throw failure!;
       }
       if (yielded >= chunks.length) {
         yield seqCursor.meta(StreamEvent.finishReasonKey, 'STOP');
@@ -48,4 +50,15 @@ class FakeStreamingService implements StreamingService {
   Future<void> cancel() async {
     _generation++;
   }
+}
+
+Object? _failureFor(MockStreamFailure failure) {
+  return switch (failure) {
+    MockStreamFailure.none => null,
+    MockStreamFailure.script => StateError(AppConstants.mockStreamFailed),
+    MockStreamFailure.offline => const ApiException(
+        message: AppConstants.connectionFailed,
+        detail: AppConstants.noInternetConnection,
+      ),
+  };
 }

@@ -52,6 +52,7 @@ abstract final class AppConstants {
       'Service temporarily unavailable';
   static const String requestTimedOut = 'Request timed out';
   static const String connectionFailed = 'Connection failed';
+  static const String noInternetConnection = 'No internet connection';
   static const String titlePromptPrefix =
       'Reply with a 3-6 word chat title only. No quotes or punctuation.\n\n';
 
@@ -111,6 +112,7 @@ abstract final class AppConstants {
   static const String mockScenarioEmpty = 'Empty';
   static const String mockScenarioErrorEarly = 'Fail early';
   static const String mockScenarioErrorMid = 'Fail mid';
+  static const String mockScenarioOffline = 'No internet';
   static const String mockStreamFailed = 'Mock stream failed';
 
   static const List<String> fakeStreamChunks = [

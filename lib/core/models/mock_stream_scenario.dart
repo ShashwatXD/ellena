@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../constants/app_constants.dart';
 
+enum MockStreamFailure { none, script, offline }
+
 enum MockStreamScenario {
   short,
   markdown,
@@ -9,7 +11,8 @@ enum MockStreamScenario {
   slow,
   empty,
   errorEarly,
-  errorMid;
+  errorMid,
+  offline;
 
   IconData get icon => switch (this) {
         MockStreamScenario.short => Icons.short_text_rounded,
@@ -19,6 +22,7 @@ enum MockStreamScenario {
         MockStreamScenario.empty => Icons.inbox_outlined,
         MockStreamScenario.errorEarly => Icons.error_outline_rounded,
         MockStreamScenario.errorMid => Icons.warning_amber_rounded,
+        MockStreamScenario.offline => Icons.wifi_off_rounded,
       };
 
   String get label => switch (this) {
@@ -29,6 +33,7 @@ enum MockStreamScenario {
         MockStreamScenario.empty => AppConstants.mockScenarioEmpty,
         MockStreamScenario.errorEarly => AppConstants.mockScenarioErrorEarly,
         MockStreamScenario.errorMid => AppConstants.mockScenarioErrorMid,
+        MockStreamScenario.offline => AppConstants.mockScenarioOffline,
       };
 
   Duration get chunkDelay => switch (this) {
@@ -39,6 +44,7 @@ enum MockStreamScenario {
         MockStreamScenario.empty => Duration.zero,
         MockStreamScenario.errorEarly => const Duration(milliseconds: 180),
         MockStreamScenario.errorMid => const Duration(milliseconds: 220),
+        MockStreamScenario.offline => const Duration(milliseconds: 180),
       };
 
   List<String> get chunks => switch (this) {
@@ -49,13 +55,22 @@ enum MockStreamScenario {
         MockStreamScenario.empty => const [],
         MockStreamScenario.errorEarly => AppConstants.mockChunksErrorEarly,
         MockStreamScenario.errorMid => AppConstants.mockChunksErrorMid,
+        MockStreamScenario.offline => const [],
       };
 
-  /// When non-null, throw after this many successful yields (0 = before any).
   int? get failAfterYields => switch (this) {
         MockStreamScenario.errorEarly => 0,
         MockStreamScenario.errorMid => 3,
+        MockStreamScenario.offline => 0,
         _ => null,
+      };
+
+  MockStreamFailure get failure => switch (this) {
+        MockStreamScenario.errorEarly ||
+        MockStreamScenario.errorMid =>
+          MockStreamFailure.script,
+        MockStreamScenario.offline => MockStreamFailure.offline,
+        _ => MockStreamFailure.none,
       };
 
   static const List<MockStreamScenario> all = MockStreamScenario.values;

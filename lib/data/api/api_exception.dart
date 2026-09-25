@@ -27,6 +27,7 @@ class ApiException implements Exception {
       return switch (error.error) {
         ApiException.offlineReason => const ApiException(
             message: AppConstants.connectionFailed,
+            detail: AppConstants.noInternetConnection,
           ),
         _ => const ApiException(
             message: AppConstants.stoppedLabel,
@@ -54,7 +55,9 @@ class ApiException implements Exception {
 
     return ApiException(
       message: message,
-      detail: body.detail(status),
+      detail: error.type == DioExceptionType.connectionError
+          ? AppConstants.noInternetConnection
+          : body.detail(status),
       statusCode: status,
       type: error.type,
     );
