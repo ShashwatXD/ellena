@@ -7,6 +7,7 @@ class _AssistantBubble extends StatelessWidget {
     required this.theme,
     required this.colors,
     this.onRetry,
+    this.onLongPress,
   });
 
   final Message message;
@@ -14,16 +15,16 @@ class _AssistantBubble extends StatelessWidget {
   final ThemeData theme;
   final ColorScheme colors;
   final VoidCallback? onRetry;
+  final void Function(BuildContext bubbleContext)? onLongPress;
 
   @override
   Widget build(BuildContext context) {
     final streaming = message.status == MessageStatus.streaming;
     final failed = message.status == MessageStatus.failed;
-    final complete = message.status == MessageStatus.complete;
     final stopped = message.status == MessageStatus.stopped;
     final empty = message.content.isEmpty;
-    final stoppedBeforeReply = stopped &&
-        (empty || message.content == AppConstants.stoppedLabel);
+    final stoppedBeforeReply =
+        stopped && (empty || message.content == AppConstants.stoppedLabel);
     final inlineCodeStyle = AppTypography.codeStyle(colors.onSurface);
 
     return Align(
@@ -33,38 +34,53 @@ class _AssistantBubble extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (empty && streaming)
-              const _LoadingDots()
-            else if (stoppedBeforeReply)
-              const _ErrorLine(label: AppConstants.stoppedLabel)
-            else if (empty && failed)
-              _ErrorLine(label: message.error ?? AppConstants.genericError)
-            else ...[
-              StreamingTextMarkdown(
-                key: ValueKey(
-                  '${message.id}-${message.status.name}-${theme.brightness.name}',
-                ),
-                text: message.content,
-                markdownEnabled: true,
-                animationsEnabled: false,
-                autoScroll: false,
-                styleSheet: theme.textTheme.bodyLarge?.copyWith(height: 1.6),
-                padding: EdgeInsets.zero,
-                codeBuilder: (context, name, code, closed) =>
-                    _MarkdownCodeBlock(name: name, code: code),
-                highlightBuilder: (context, text, style) => Text(
-                  text,
-                  style: inlineCodeStyle.copyWith(
-                    backgroundColor:
-                        colors.surfaceContainerHighest.withValues(alpha: 0.7),
-                  ),
-                ),
+            _MessageBlock(
+              user: false,
+              maxWidth: maxWidth,
+              onLongPress: onLongPress,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (empty && streaming)
+                    const _LoadingDots()
+                  else if (stoppedBeforeReply)
+                    const _ErrorLine(label: AppConstants.stoppedLabel)
+                  else if (empty && failed)
+                    _ErrorLine(
+                      label: message.error ?? AppConstants.genericError,
+                    )
+                  else ...[
+                    StreamingTextMarkdown(
+                      key: ValueKey(
+                        '${message.id}-${message.status.name}-${theme.brightness.name}',
+                      ),
+                      text: message.content,
+                      markdownEnabled: true,
+                      animationsEnabled: false,
+                      autoScroll: false,
+                      styleSheet: theme.textTheme.bodyLarge?.copyWith(
+                        height: 1.6,
+                      ),
+                      padding: EdgeInsets.zero,
+                      codeBuilder: (context, name, code, closed) =>
+                          _MarkdownCodeBlock(name: name, code: code),
+                      highlightBuilder: (context, text, style) => Text(
+                        text,
+                        style: inlineCodeStyle.copyWith(
+                          backgroundColor: colors.surface.withValues(
+                            alpha: 0.7,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (streaming) ...[
+                      const SizedBox(height: 4),
+                      const _StreamingCaret(),
+                    ],
+                  ],
+                ],
               ),
-              if (streaming) ...[
-                const SizedBox(height: 4),
-                const _StreamingCaret(),
-              ],
-            ],
+            ),
             if (stopped && !stoppedBeforeReply) ...[
               const SizedBox(height: AppSpacing.xs),
               _StatusChip(
@@ -80,13 +96,6 @@ class _AssistantBubble extends StatelessWidget {
                 detail: message.errorDetail,
                 showSummary: !empty,
                 onRetry: onRetry,
-              ),
-            ],
-            if (!stoppedBeforeReply && !empty && (complete || stopped)) ...[
-              const SizedBox(height: AppSpacing.sm),
-              _AssistantActions(
-                content: message.content,
-                showSuccess: complete,
               ),
             ],
           ],

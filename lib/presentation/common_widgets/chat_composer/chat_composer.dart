@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../providers/providers.dart';
 import '../../theme/app_breakpoints.dart';
 import '../../theme/app_motion.dart';
 import '../../theme/app_radii.dart';
@@ -9,10 +11,11 @@ import '../../theme/app_spacing.dart';
 import '../add_to_chat_sheet.dart';
 import '../app_bottom_sheet.dart';
 import '../connectors_sheet.dart';
+import 'composer_quote_bar.dart';
 
 part 'composer_round_button.dart';
 
-class ChatComposer extends StatefulWidget {
+class ChatComposer extends ConsumerStatefulWidget {
   const ChatComposer({
     super.key,
     required this.onSend,
@@ -30,10 +33,10 @@ class ChatComposer extends StatefulWidget {
   final String? hintText;
 
   @override
-  State<ChatComposer> createState() => _ChatComposerState();
+  ConsumerState<ChatComposer> createState() => _ChatComposerState();
 }
 
-class _ChatComposerState extends State<ChatComposer>
+class _ChatComposerState extends ConsumerState<ChatComposer>
     with SingleTickerProviderStateMixin {
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
@@ -81,10 +84,19 @@ class _ChatComposerState extends State<ChatComposer>
   void _submit() {
     if (!_canSend) return;
     HapticFeedback.lightImpact();
-    final text = _controller.text;
+    final quote = ref.read(composerQuoteProvider);
+    final text = _outgoing(_controller.text, quote);
     _controller.clear();
+    ref.read(composerQuoteProvider.notifier).clear();
     setState(() {});
     widget.onSend(text);
+  }
+
+  String _outgoing(String typed, String? quote) {
+    final body = typed.trim();
+    final quoted = quote?.trim();
+    if (quoted == null || quoted.isEmpty) return body;
+    return '"$quoted"\n\n$body';
   }
 
   void _stop() {
@@ -100,7 +112,7 @@ class _ChatComposerState extends State<ChatComposer>
   }
 
   void _openAddSheet() {
-    _openSheet((_) => const AddToChatSheet());
+    _openSheet((_) => AddToChatSheet(onPrompt: widget.onSend));
   }
 
   void _openConnectors() {
@@ -115,6 +127,12 @@ class _ChatComposerState extends State<ChatComposer>
     final controlsEnabled = widget.enabled && !widget.isStreaming;
     final motion = AppMotion.of(context, AppMotion.normal);
     final expanded = _expanded;
+    final quote = ref.watch(composerQuoteProvider);
+
+    ref.listen(composerQuoteProvider, (previous, next) {
+      if (next == null || next == previous) return;
+      _focusNode.requestFocus();
+    });
 
     final chrome = AnimatedContainer(
       duration: motion,
@@ -137,8 +155,8 @@ class _ChatComposerState extends State<ChatComposer>
         curve: AppMotion.standard,
         alignment: Alignment.bottomCenter,
         child: expanded
-            ? _expandedBody(theme, colors, isDark, controlsEnabled)
-            : _collapsedBody(theme, colors, controlsEnabled),
+            ? _expandedBody(theme, colors, isDark, controlsEnabled, quote)
+            : _collapsedBody(theme, colors, controlsEnabled, quote),
       ),
     );
 
@@ -168,6 +186,7 @@ class _ChatComposerState extends State<ChatComposer>
     ThemeData theme,
     ColorScheme colors,
     bool controlsEnabled,
+    String? quote,
   ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxs),
@@ -183,11 +202,21 @@ class _ChatComposerState extends State<ChatComposer>
               theme: theme,
               colors: colors,
               enabled: controlsEnabled,
-              hint: _hint(idle: true),
+              hint: quote ?? _hint(idle: true),
+              hintItalic: quote != null,
               maxLines: 1,
               padding: EdgeInsets.zero,
             ),
           ),
+          if (quote != null)
+            IconButton(
+              tooltip: AppConstants.removeQuoteTooltip,
+              onPressed: () => ref.read(composerQuoteProvider.notifier).clear(),
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+              icon: Icon(Icons.close, size: 18, color: colors.onSurfaceVariant),
+            ),
           const _ComposerGlyph(icon: Icons.mic_none_rounded),
           const SizedBox(width: AppSpacing.xxs),
         ],
@@ -200,6 +229,7 @@ class _ChatComposerState extends State<ChatComposer>
     ColorScheme colors,
     bool isDark,
     bool controlsEnabled,
+    String? quote,
   ) {
     final motion = AppMotion.of(context, AppMotion.normal);
 
@@ -207,6 +237,12 @@ class _ChatComposerState extends State<ChatComposer>
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (quote != null)
+          ComposerQuoteBar(
+            text: quote,
+            expanded: true,
+            onClear: () => ref.read(composerQuoteProvider.notifier).clear(),
+          ),
         _input(
           theme: theme,
           colors: colors,
@@ -306,6 +342,7 @@ class _ChatComposerState extends State<ChatComposer>
     required bool enabled,
     required String hint,
     required EdgeInsets padding,
+    bool hintItalic = false,
     int minLines = 1,
     int maxLines = 6,
   }) {
@@ -325,6 +362,7 @@ class _ChatComposerState extends State<ChatComposer>
         hintText: hint,
         hintStyle: theme.textTheme.bodyLarge?.copyWith(
           color: colors.onSurfaceVariant.withValues(alpha: 0.9),
+          fontStyle: hintItalic ? FontStyle.italic : FontStyle.normal,
         ),
         border: InputBorder.none,
         enabledBorder: InputBorder.none,

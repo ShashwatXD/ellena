@@ -14,11 +14,12 @@ import '../../theme/app_radii.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
 import '../clipboard_copy.dart';
+import '../message_actions_menu.dart';
+import '../select_text_sheet.dart';
 
 part 'user_bubble.dart';
 part 'assistant_bubble.dart';
 part 'markdown_code_block.dart';
-part 'assistant_actions.dart';
 part 'failure_actions.dart';
 part 'loading_dots.dart';
 part 'streaming_caret.dart';
@@ -58,7 +59,8 @@ class MessageBubble extends ConsumerWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final isUser = message.role == MessageRole.user;
-    final maxWidth = MediaQuery.sizeOf(context).width *
+    final maxWidth =
+        MediaQuery.sizeOf(context).width *
         AppBreakpoints.messageMaxFraction(isUser: isUser);
     final motion = AppMotion.of(context, AppMotion.normal);
 
@@ -80,23 +82,114 @@ class MessageBubble extends ConsumerWidget {
               message: message,
               maxWidth: maxWidth,
               theme: theme,
-              colors: colors,
+              onLongPress: (bubble) => _openActions(bubble, ref, message, true),
             )
           : _AssistantBubble(
               message: message,
               maxWidth: maxWidth,
               theme: theme,
               colors: colors,
+              onLongPress: (bubble) =>
+                  _openActions(bubble, ref, message, false),
               onRetry: canRetry
                   ? () {
                       HapticFeedback.lightImpact();
-                      ref.read(chatProvider.notifier).retryMessage(
-                            conversationId,
-                            messageId,
-                          );
+                      ref
+                          .read(chatProvider.notifier)
+                          .retryMessage(conversationId, messageId);
                     }
                   : null,
             ),
+    );
+  }
+}
+
+Future<void> _openActions(
+  BuildContext context,
+  WidgetRef ref,
+  Message message,
+  bool isUser,
+) async {
+  final text = message.content.trim();
+  if (text.isEmpty) return;
+  HapticFeedback.mediumImpact();
+  final box = context.findRenderObject()! as RenderBox;
+  final anchor = box.localToGlobal(Offset.zero) & box.size;
+  final action = await MessageActionsMenu.show(
+    context,
+    anchor: anchor,
+    text: text,
+    isUser: isUser,
+  );
+  if (!context.mounted || action == null) return;
+  switch (action) {
+    case MessageAction.ask:
+      ref.read(composerQuoteProvider.notifier).set(text);
+    case MessageAction.copy:
+      await ClipboardCopy.copy(context, text, notify: false);
+    case MessageAction.selectText:
+      await SelectTextSheet.show(context, text);
+    case MessageAction.share:
+    case MessageAction.report:
+      break;
+  }
+}
+
+class _MessageBlock extends StatelessWidget {
+  const _MessageBlock({
+    required this.user,
+    required this.maxWidth,
+    required this.child,
+    this.onLongPress,
+  });
+
+  final bool user;
+  final double maxWidth;
+  final Widget child;
+  final void Function(BuildContext bubbleContext)? onLongPress;
+
+  static const _corner = Radius.circular(AppRadii.lg);
+  static const _point = Radius.circular(5);
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Align(
+      alignment: user ? Alignment.centerRight : Alignment.centerLeft,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: Builder(
+          builder: (bubbleContext) {
+            return GestureDetector(
+              onLongPress: onLongPress == null
+                  ? null
+                  : () => onLongPress!(bubbleContext),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: user ? colors.surface : colors.surfaceContainerHighest,
+                  borderRadius: BorderRadius.only(
+                    topLeft: _corner,
+                    topRight: _corner,
+                    bottomLeft: user ? _corner : _point,
+                    bottomRight: user ? _point : _corner,
+                  ),
+                  border: user
+                      ? Border.all(
+                          color: colors.outline,
+                          width: AppSpacing.stroke,
+                        )
+                      : null,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                  child: child,
+                ),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 }

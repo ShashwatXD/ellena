@@ -38,7 +38,9 @@ class _FailureActionsState extends State<_FailureActions> {
       children: [
         if (widget.showSummary)
           Padding(
-            padding: EdgeInsets.only(bottom: _hasDetail || widget.onRetry != null ? 6 : 0),
+            padding: EdgeInsets.only(
+              bottom: _hasDetail || widget.onRetry != null ? 6 : 0,
+            ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -133,8 +135,10 @@ class _FailureActionsState extends State<_FailureActions> {
                 onTapUp: (_) => setState(() => _pressed = false),
                 onTap: widget.onRetry,
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [

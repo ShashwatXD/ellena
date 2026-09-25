@@ -1,10 +1,7 @@
 part of 'message_bubble.dart';
 
 class _MarkdownCodeBlock extends StatelessWidget {
-  const _MarkdownCodeBlock({
-    required this.name,
-    required this.code,
-  });
+  const _MarkdownCodeBlock({required this.name, required this.code});
 
   final String name;
   final String code;
@@ -20,10 +17,7 @@ class _MarkdownCodeBlock extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.codeSurface,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(
-          color: AppColors.codeLine,
-          width: AppSpacing.stroke,
-        ),
+        border: Border.all(color: AppColors.codeLine, width: AppSpacing.stroke),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -56,8 +50,9 @@ class _MarkdownCodeBlock extends StatelessWidget {
                   tooltip: AppConstants.copyTooltip,
                   style: IconButton.styleFrom(
                     foregroundColor: AppColors.codeMuted,
-                    disabledForegroundColor:
-                        AppColors.codeMuted.withValues(alpha: 0.35),
+                    disabledForegroundColor: AppColors.codeMuted.withValues(
+                      alpha: 0.35,
+                    ),
                     padding: const EdgeInsets.all(6),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -81,10 +76,7 @@ class _MarkdownCodeBlock extends StatelessWidget {
               AppSpacing.sm + 2,
               AppSpacing.sm + 2,
             ),
-            child: SelectableText(
-              code,
-              style: codeStyle,
-            ),
+            child: SelectableText(code, style: codeStyle),
           ),
         ],
       ),

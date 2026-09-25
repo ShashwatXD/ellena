@@ -71,6 +71,12 @@ abstract final class AppConstants {
   static const String knowMoreLabel = 'Know more';
   static const String showLessLabel = 'Show less';
   static const String copiedLabel = 'Copied';
+  static const String askEllenaLabel = 'Ask Ellena';
+  static const String shareLabel = 'Share';
+  static const String copyLabel = 'Copy';
+  static const String selectTextLabel = 'Select text';
+  static const String reportLabel = 'Report';
+  static const String removeQuoteTooltip = 'Remove quote';
   static const String copyTooltip = 'Copy';
   static const String geminiRequestFailed = 'Request failed';
   static const String rateLimitReached = 'Rate limit reached';

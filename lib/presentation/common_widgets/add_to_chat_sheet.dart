@@ -1,18 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/models/mock_stream_scenario.dart';
+import '../providers/providers.dart';
 import '../theme/app_breakpoints.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radii.dart';
 import '../theme/app_spacing.dart';
 import 'app_bottom_sheet.dart';
 
-class AddToChatSheet extends StatelessWidget {
-  const AddToChatSheet({super.key});
+class AddToChatSheet extends ConsumerWidget {
+  const AddToChatSheet({super.key, required this.onPrompt});
+
+  final ValueChanged<String> onPrompt;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final pad = AppBreakpoints.pagePadding(context);
+    final mock = ref.watch(useFakeStreamProvider);
 
     return AppBottomSheet(
       title: AppConstants.addToChatTitle,
@@ -91,9 +98,29 @@ class AddToChatSheet extends StatelessWidget {
             icon: Icons.grid_on_outlined,
             label: AppConstants.addCreateSpreadsheet,
           ),
+          if (mock) ...[
+            const Divider(),
+            for (final scenario in MockStreamScenario.all)
+              _SheetRow(
+                icon: scenario.icon,
+                label: scenario.label,
+                onTap: () => _chooseScenario(context, ref, scenario),
+              ),
+          ],
         ],
       ),
     );
+  }
+
+  void _chooseScenario(
+    BuildContext context,
+    WidgetRef ref,
+    MockStreamScenario scenario,
+  ) {
+    ref.read(mockStreamScenarioProvider.notifier).select(scenario);
+    HapticFeedback.selectionClick();
+    Navigator.of(context).pop();
+    onPrompt(scenario.label);
   }
 }
 
@@ -135,52 +162,57 @@ class _SheetRow extends StatelessWidget {
     required this.icon,
     required this.label,
     this.badge,
+    this.onTap,
   });
 
   final IconData icon;
   final String label;
   final String? badge;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
 
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: AppBreakpoints.pagePadding(context),
-        vertical: 14,
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 22, color: colors.onSurface),
-          const SizedBox(width: AppSpacing.md),
-          Flexible(
-            child: Text(
-              label,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          if (badge != null) ...[
-            const SizedBox(width: AppSpacing.xs),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppColors.avatarBlue.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(AppRadii.pill),
-              ),
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: AppBreakpoints.pagePadding(context),
+          vertical: 14,
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 22, color: colors.onSurface),
+            const SizedBox(width: AppSpacing.md),
+            Flexible(
               child: Text(
-                badge!,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: AppColors.avatarBlue,
-                  fontWeight: FontWeight.w600,
+                label,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
+            if (badge != null) ...[
+              const SizedBox(width: AppSpacing.xs),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.avatarBlue.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                ),
+                child: Text(
+                  badge!,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: AppColors.avatarBlue,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
