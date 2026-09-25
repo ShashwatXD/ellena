@@ -19,7 +19,8 @@ void main() {
         child: EllenaApp(),
       ),
     );
-    expect(find.text('ellena'), findsOneWidget);
+    expect(find.text('Tasks'), findsOneWidget);
+    expect(find.text('Agent'), findsOneWidget);
     expect(find.text('What can I do for you?'), findsOneWidget);
   });
 }
