@@ -1,4 +1,4 @@
-package com.example.ellena
+package app.ellena
 
 import io.flutter.embedding.android.FlutterActivity
 
