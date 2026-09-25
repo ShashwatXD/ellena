@@ -9,11 +9,31 @@ import 'storage_service.dart';
 /// Hive persistence for conversations + messages.
 class ChatStorage {
   ChatStorage({StorageService? storage})
-      : _storage = storage ?? StorageService.instance;
+    : _storage = storage ?? StorageService.instance;
 
   final StorageService _storage;
 
   Result<ChatSnapshot> load() {
+    return loadConversationList().when(
+      success: (conversations) {
+        final messagesByConversation = <String, List<Message>>{};
+        for (final conversation in conversations) {
+          messagesByConversation[conversation.id] = loadMessages(
+            conversation.id,
+          );
+        }
+        return Success(
+          ChatSnapshot(
+            conversations: conversations,
+            messagesByConversation: messagesByConversation,
+          ),
+        );
+      },
+      failure: (error, stackTrace) => Failure(error, stackTrace),
+    );
+  }
+
+  Result<List<Conversation>> loadConversationList() {
     try {
       final conversations = <Conversation>[];
       for (final key in _storage.keys(boxName: StorageKeys.conversationsBox)) {
@@ -26,25 +46,26 @@ class ChatStorage {
         }
       }
       conversations.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-
-      final messagesByConversation = <String, List<Message>>{};
-      for (final conversation in conversations) {
-        messagesByConversation[conversation.id] =
-            _loadMessages(conversation.id);
-      }
-
-      return Success(
-        ChatSnapshot(
-          conversations: conversations,
-          messagesByConversation: messagesByConversation,
-        ),
-      );
+      return Success(conversations);
     } catch (error, stackTrace) {
       return Failure(error, stackTrace);
     }
   }
 
-  List<Message> _loadMessages(String conversationId) {
+  Conversation? readConversation(String id) {
+    final raw = _storage.get<dynamic>(
+      id,
+      boxName: StorageKeys.conversationsBox,
+    );
+    if (raw is! Map) return null;
+    return Conversation.fromJson(raw);
+  }
+
+  bool hasMessages(String conversationId) {
+    return _storage.contains(conversationId, boxName: StorageKeys.messagesBox);
+  }
+
+  List<Message> loadMessages(String conversationId) {
     final raw = _storage.get<dynamic>(
       conversationId,
       boxName: StorageKeys.messagesBox,
@@ -62,10 +83,7 @@ class ChatStorage {
                 status: MessageStatus.failed,
                 error: 'Interrupted',
               )
-            : message.copyWith(
-                status: MessageStatus.stopped,
-                clearError: true,
-              );
+            : message.copyWith(status: MessageStatus.stopped, clearError: true);
       }
       messages.add(message);
     }
@@ -103,10 +121,7 @@ class ChatStorage {
         conversationId,
         boxName: StorageKeys.conversationsBox,
       );
-      await _storage.delete(
-        conversationId,
-        boxName: StorageKeys.messagesBox,
-      );
+      await _storage.delete(conversationId, boxName: StorageKeys.messagesBox);
       return true;
     });
   }

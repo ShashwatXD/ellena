@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/api/api_repository.dart';
 import '../../data/api/api_service.dart';
+import '../../data/cache/chat_cache.dart';
+import '../../data/cache/chat_remote.dart';
 import '../../data/storage/chat_storage.dart';
 import '../../data/storage/storage_service.dart';
 import '../../data/streaming/gemini_streaming_service.dart';
@@ -16,6 +18,17 @@ final storageServiceProvider = Provider<StorageService>((ref) {
 
 final chatStorageProvider = Provider<ChatStorage>((ref) {
   return ChatStorage(storage: ref.watch(storageServiceProvider));
+});
+
+final chatRemoteProvider = Provider<ChatRemote>((ref) {
+  return const UnavailableChatRemote();
+});
+
+final chatCacheProvider = Provider<ChatCache>((ref) {
+  return ChatCache(
+    storage: ref.watch(chatStorageProvider),
+    remote: ref.watch(chatRemoteProvider),
+  );
 });
 
 final apiServiceProvider = Provider<ApiService>((ref) {
@@ -33,9 +46,7 @@ final apiRepositoryProvider = Provider<ApiRepository>((ref) {
 });
 
 final geminiStreamingProvider = Provider<GeminiStreamingService>((ref) {
-  return GeminiStreamingService(
-    repository: ref.watch(apiRepositoryProvider),
-  );
+  return GeminiStreamingService(repository: ref.watch(apiRepositoryProvider));
 });
 
 final geminiTitleProvider = Provider<GeminiTitleService>((ref) {

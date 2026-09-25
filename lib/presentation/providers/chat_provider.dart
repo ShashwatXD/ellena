@@ -6,7 +6,9 @@ import '../../core/constants/app_constants.dart';
 import '../../core/models/conversation.dart';
 import '../../core/models/message.dart';
 import '../../core/models/message_status.dart';
+import '../../core/result/result.dart';
 import '../../data/api/api_exception.dart';
+import '../../data/cache/chat_cache.dart';
 import '../../data/storage/chat_storage.dart';
 import '../../data/streaming/message_stream.dart';
 import '../../data/streaming/stream_event.dart';
@@ -16,7 +18,9 @@ import 'data_providers.dart';
 import 'mock_stream_provider.dart';
 import 'model_provider.dart';
 
-final chatProvider = NotifierProvider<ChatNotifier, ChatState>(ChatNotifier.new);
+final chatProvider = NotifierProvider<ChatNotifier, ChatState>(
+  ChatNotifier.new,
+);
 
 class ChatNotifier extends Notifier<ChatState> {
   static const _streamPersistGap = Duration(milliseconds: 400);
@@ -27,6 +31,7 @@ class ChatNotifier extends Notifier<ChatState> {
   StreamingService? _liveService;
 
   ChatStorage get _storage => ref.read(chatStorageProvider);
+  ChatCache get _cache => ref.read(chatCacheProvider);
 
   @override
   ChatState build() {
@@ -44,20 +49,14 @@ class ChatNotifier extends Notifier<ChatState> {
       _persistDebounce.clear();
     });
 
-    final loaded = _storage.load();
-    return loaded.when(
-      success: (snapshot) => ChatState(
-        conversations: snapshot.conversations,
-        messagesByConversation: snapshot.messagesByConversation,
-      ),
-      failure: (error, stackTrace) => const ChatState(),
-    );
+    return ChatState(conversations: _cache.readConversations());
   }
 
   Future<void> _persistConversation(String conversationId) async {
     final conversation = state.conversationById(conversationId);
     if (conversation == null) return;
     await _storage.saveConversation(conversation);
+    if (!state.messagesByConversation.containsKey(conversationId)) return;
     await _storage.saveMessages(
       conversationId,
       state.messagesFor(conversationId),
@@ -106,15 +105,17 @@ class ChatNotifier extends Notifier<ChatState> {
       createdAt: now,
     );
 
+    _cache.invalidateRecord(conversationId);
+    _cache.invalidateList();
+    _cache.invalidateMessages(conversationId);
+    _cache.protect(conversationId);
+    _cache.holdMessages(conversationId, [userMessage, assistantMessage]);
     state = state.copyWith(
       conversations: [conversation, ...state.conversations],
-      messagesByConversation: {
-        ...state.messagesByConversation,
-        conversationId: [userMessage, assistantMessage],
-      },
+      messagesByConversation: _cache.windows(),
       activeConversationId: conversationId,
     );
-    unawaited(_flushPersist(conversationId));
+    unawaited(_reloadListAfter(_flushPersist(conversationId), conversationId));
 
     unawaited(
       _beginStream(
@@ -123,15 +124,16 @@ class ChatNotifier extends Notifier<ChatState> {
         prompt: userMessage.content,
       ),
     );
-    unawaited(
-      _maybeGenerateTitle(conversationId, userMessage.content),
-    );
+    unawaited(_maybeGenerateTitle(conversationId, userMessage.content));
     return conversationId;
   }
 
   void sendMessage(String conversationId, String text) {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
+
+    final conversation = state.conversationById(conversationId);
+    if (conversation == null) return;
 
     final now = DateTime.now();
     final existing = [...state.messagesFor(conversationId)];
@@ -154,20 +156,19 @@ class ChatNotifier extends Notifier<ChatState> {
       createdAt: now,
     );
 
-    final conversations = state.conversations.map((c) {
-      if (c.id != conversationId) return c;
-      return c.copyWith(updatedAt: now);
-    }).toList()
-      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-
+    final messages = [...existing, userMessage, assistantMessage];
+    _cache.invalidateRecord(conversationId);
+    _cache.invalidateList();
+    _cache.invalidateMessages(conversationId);
+    _cache.protect(conversationId);
+    _cache.holdMessages(conversationId, messages);
     state = state.copyWith(
-      conversations: conversations,
-      messagesByConversation: {
-        ...state.messagesByConversation,
-        conversationId: [...existing, userMessage, assistantMessage],
-      },
+      conversations: _replaceConversation(
+        conversation.copyWith(updatedAt: now),
+      ),
+      messagesByConversation: _cache.windows(),
     );
-    unawaited(_flushPersist(conversationId));
+    unawaited(_reloadListAfter(_flushPersist(conversationId), conversationId));
 
     unawaited(
       _beginStream(
@@ -200,17 +201,15 @@ class ChatNotifier extends Notifier<ChatState> {
           : messages[index].content,
     );
 
-    state = state.copyWith(
-      messagesByConversation: {
-        ...state.messagesByConversation,
-        conversationId: messages,
-      },
-    );
+    _cache.unprotect(conversationId, keep: state.activeConversationId);
+    _publishMessages(conversationId, messages);
     unawaited(_flushPersist(conversationId));
   }
 
   bool isStreaming(String conversationId) {
-    return state.messagesFor(conversationId).any(
+    return state
+        .messagesFor(conversationId)
+        .any(
           (m) =>
               m.role == MessageRole.assistant &&
               m.status == MessageStatus.streaming,
@@ -229,6 +228,7 @@ class ChatNotifier extends Notifier<ChatState> {
     _streams.clear();
     _persistDebounce.clear();
     await _storage.clear();
+    _cache.invalidateAll();
     state = const ChatState();
   }
 
@@ -237,25 +237,30 @@ class ChatNotifier extends Notifier<ChatState> {
   }
 
   void openConversation(String conversationId) {
-    if (state.conversationById(conversationId) == null) return;
-    state = state.copyWith(activeConversationId: conversationId);
+    final known =
+        state.conversationById(conversationId) != null ||
+        _cache.readConversation(conversationId) != null;
+    if (!known) return;
+    _cache.readMessages(conversationId);
+    state = state.copyWith(
+      activeConversationId: conversationId,
+      messagesByConversation: _cache.windows(),
+    );
   }
 
   void togglePin(String conversationId) {
     final conversation = state.conversationById(conversationId);
     if (conversation == null) return;
 
-    final conversations = state.conversations.map((c) {
-      if (c.id != conversationId) return c;
-      return c.copyWith(isPinned: !c.isPinned);
-    }).toList()
-      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-
-    state = state.copyWith(conversations: conversations);
+    final updated = conversation.copyWith(
+      isPinned: !conversation.isPinned,
+      updatedAt: DateTime.now(),
+    );
+    state = state.copyWith(conversations: _replaceConversation(updated));
+    _cache.invalidateRecord(conversationId);
+    _cache.invalidateList();
     unawaited(
-      _storage.saveConversation(
-        conversation.copyWith(isPinned: !conversation.isPinned),
-      ),
+      _reloadListAfter(_storage.saveConversation(updated), conversationId),
     );
   }
 
@@ -263,16 +268,18 @@ class ChatNotifier extends Notifier<ChatState> {
     final cleaned = title.trim().replaceAll(RegExp(r'\s+'), ' ');
     if (cleaned.isEmpty) return;
     final conversation = state.conversationById(conversationId);
-    if (conversation == null) return;
+    if (conversation == null || conversation.title == cleaned) return;
 
-    final updated = conversation.copyWith(title: cleaned);
-    final conversations = state.conversations.map((c) {
-      if (c.id != conversationId) return c;
-      return updated;
-    }).toList();
-
-    state = state.copyWith(conversations: conversations);
-    unawaited(_storage.saveConversation(updated));
+    final updated = conversation.copyWith(
+      title: cleaned,
+      updatedAt: DateTime.now(),
+    );
+    state = state.copyWith(conversations: _replaceConversation(updated));
+    _cache.invalidateRecord(conversationId);
+    _cache.invalidateList();
+    unawaited(
+      _reloadListAfter(_storage.saveConversation(updated), conversationId),
+    );
   }
 
   Future<void> deleteConversation(String conversationId) async {
@@ -287,19 +294,35 @@ class ChatNotifier extends Notifier<ChatState> {
     }
     if (streaming) await _liveService?.cancel();
 
-    final conversations =
-        state.conversations.where((c) => c.id != conversationId).toList();
-    final messagesByConversation =
-        Map<String, List<Message>>.from(state.messagesByConversation)
-          ..remove(conversationId);
+    final conversations = state.conversations
+        .where((c) => c.id != conversationId)
+        .toList();
+    final messagesByConversation = Map<String, List<Message>>.from(
+      state.messagesByConversation,
+    )..remove(conversationId);
 
     final clearActive = state.activeConversationId == conversationId;
+    _cache.unprotect(
+      conversationId,
+      keep: clearActive ? null : state.activeConversationId,
+    );
+    _cache.invalidateRecord(conversationId);
+    _cache.invalidateMessages(conversationId);
+    _cache.invalidateList();
     state = state.copyWith(
       conversations: conversations,
       messagesByConversation: messagesByConversation,
       clearActiveConversationId: clearActive,
     );
     await _storage.deleteConversation(conversationId);
+    _cache.invalidateRecord(conversationId);
+    _cache.invalidateMessages(conversationId);
+    _cache.invalidateList();
+    state = state.copyWith(
+      conversations: _cache.readConversations(),
+      messagesByConversation: _cache.windows(),
+      clearActiveConversationId: clearActive,
+    );
   }
 
   void retryMessage(String conversationId, String messageId) {
@@ -327,12 +350,7 @@ class ChatNotifier extends Notifier<ChatState> {
       status: MessageStatus.streaming,
       clearError: true,
     );
-    state = state.copyWith(
-      messagesByConversation: {
-        ...state.messagesByConversation,
-        conversationId: messages,
-      },
-    );
+    _publishMessages(conversationId, messages);
     unawaited(_flushPersist(conversationId));
 
     unawaited(
@@ -366,6 +384,7 @@ class ChatNotifier extends Notifier<ChatState> {
       history.removeLast();
     }
 
+    _cache.protect(conversationId);
     final service = ref.read(streamingServiceProvider);
     _liveService = service;
     final model = ref.read(selectedModelProvider).id;
@@ -379,17 +398,17 @@ class ChatNotifier extends Notifier<ChatState> {
       live.subscription = service
           .streamReply(prompt: prompt, model: model, history: history)
           .listen(
-        (event) => _onStreamEvent(conversationId, messageId, event),
-        onError: (Object error, StackTrace stackTrace) {
-          if (!_owns(messageId, generation)) return;
-          unawaited(_failStream(conversationId, messageId, error));
-        },
-        onDone: () {
-          if (!_owns(messageId, generation)) return;
-          unawaited(_completeStream(conversationId, messageId));
-        },
-        cancelOnError: true,
-      );
+            (event) => _onStreamEvent(conversationId, messageId, event),
+            onError: (Object error, StackTrace stackTrace) {
+              if (!_owns(messageId, generation)) return;
+              unawaited(_failStream(conversationId, messageId, error));
+            },
+            onDone: () {
+              if (!_owns(messageId, generation)) return;
+              unawaited(_completeStream(conversationId, messageId));
+            },
+            cancelOnError: true,
+          );
     } catch (error) {
       if (!_owns(messageId, generation)) return;
       await _failStream(conversationId, messageId, error);
@@ -440,12 +459,7 @@ class ChatNotifier extends Notifier<ChatState> {
     messages[index] = messages[index].copyWith(
       content: '${messages[index].content}$chunk',
     );
-    state = state.copyWith(
-      messagesByConversation: {
-        ...state.messagesByConversation,
-        conversationId: messages,
-      },
-    );
+    _publishMessages(conversationId, messages);
     _scheduleStreamPersist(conversationId);
   }
 
@@ -464,15 +478,12 @@ class ChatNotifier extends Notifier<ChatState> {
         error: AppConstants.geminiRequestFailed,
       );
     } else {
-      messages[index] =
-          messages[index].copyWith(status: MessageStatus.complete);
+      messages[index] = messages[index].copyWith(
+        status: MessageStatus.complete,
+      );
     }
-    state = state.copyWith(
-      messagesByConversation: {
-        ...state.messagesByConversation,
-        conversationId: messages,
-      },
-    );
+    _cache.unprotect(conversationId, keep: state.activeConversationId);
+    _publishMessages(conversationId, messages);
     unawaited(_flushPersist(conversationId));
   }
 
@@ -484,8 +495,9 @@ class ChatNotifier extends Notifier<ChatState> {
     if (!_titleRequestedIds.add(conversationId)) return;
 
     final provisional = _titleFrom(firstUserMessage);
-    final title =
-        await ref.read(geminiTitleProvider).generateTitle(firstUserMessage);
+    final title = await ref
+        .read(geminiTitleProvider)
+        .generateTitle(firstUserMessage);
     if (title == null || title.isEmpty) return;
 
     final current = state.conversationById(conversationId);
@@ -516,13 +528,33 @@ class ChatNotifier extends Notifier<ChatState> {
       errorDetail: isCancel ? null : mapped.detail,
       clearError: isCancel,
     );
-    state = state.copyWith(
-      messagesByConversation: {
-        ...state.messagesByConversation,
-        conversationId: messages,
-      },
-    );
+    _cache.unprotect(conversationId, keep: state.activeConversationId);
+    _publishMessages(conversationId, messages);
     unawaited(_flushPersist(conversationId));
+  }
+
+  void _publishMessages(String conversationId, List<Message> messages) {
+    _cache.holdMessages(conversationId, messages);
+    state = state.copyWith(messagesByConversation: _cache.windows());
+  }
+
+  Future<void> _reloadListAfter(
+    Future<Object?> pending,
+    String conversationId,
+  ) async {
+    final saved = await pending;
+    if (saved is Failure) return;
+    _cache.invalidateRecord(conversationId);
+    _cache.invalidateList();
+    if (state.conversationById(conversationId) == null) return;
+    state = state.copyWith(conversations: _cache.readConversations());
+  }
+
+  List<Conversation> _replaceConversation(Conversation updated) {
+    return state.conversations.map((conversation) {
+      if (conversation.id != updated.id) return conversation;
+      return updated;
+    }).toList()..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
   }
 
   String _titleFrom(String text) {
