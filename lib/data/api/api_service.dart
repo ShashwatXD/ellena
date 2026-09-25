@@ -3,13 +3,16 @@ import 'package:dio/dio.dart';
 import '../../core/result/result.dart';
 import 'api_exception.dart';
 import 'api_interceptor.dart';
+import 'network_watch.dart';
 
 class ApiService {
   ApiService({
     required String baseUrl,
     required String apiKey,
     Dio? dio,
-  }) : _dio = dio ??
+    NetworkInterceptor? network,
+  }) : _network = network ?? NetworkInterceptor(),
+       _dio = dio ??
             Dio(
               BaseOptions(
                 baseUrl: baseUrl,
@@ -23,11 +26,15 @@ class ApiService {
             ) {
     _dio.interceptors.addAll([
       ApiKeyInterceptor(apiKey),
+      _network,
       ApiErrorInterceptor(),
     ]);
   }
 
   final Dio _dio;
+  final NetworkInterceptor _network;
+
+  void dispose() => _network.close();
 
   Future<Result<Response<T>>> get<T>(
     String path, {

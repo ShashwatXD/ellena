@@ -41,6 +41,7 @@ dependencies:
   flutter_riverpod: ^2.6.1
   google_fonts: ^8.2.1
   flutter_streaming_text_markdown: ^1.10.1
+  connectivity_plus: ^7.3.1
 
 dev_dependencies:
   flutter_test:

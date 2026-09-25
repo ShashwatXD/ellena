@@ -1,7 +1,6 @@
 import 'stream_event.dart';
 
 abstract interface class StreamingService {
-  /// Bumps the stream generation. In-flight events keep the old id and must drop.
   int beginGeneration();
 
   Stream<StreamEvent> streamReply({

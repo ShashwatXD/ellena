@@ -14,6 +14,8 @@ class ApiException implements Exception {
     this.isCancel = false,
   });
 
+  static const offlineReason = 'offline';
+
   final String message;
   final String? detail;
   final int? statusCode;
@@ -22,11 +24,16 @@ class ApiException implements Exception {
 
   factory ApiException.fromDio(DioException error) {
     if (error.type == DioExceptionType.cancel) {
-      return const ApiException(
-        message: AppConstants.stoppedLabel,
-        isCancel: true,
-        type: DioExceptionType.cancel,
-      );
+      return switch (error.error) {
+        ApiException.offlineReason => const ApiException(
+            message: AppConstants.connectionFailed,
+          ),
+        _ => const ApiException(
+            message: AppConstants.stoppedLabel,
+            isCancel: true,
+            type: DioExceptionType.cancel,
+          ),
+      };
     }
 
     final status = error.response?.statusCode;
