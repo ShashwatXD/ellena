@@ -6,11 +6,11 @@ import '../../theme/app_breakpoints.dart';
 import '../../theme/app_motion.dart';
 import '../../theme/app_radii.dart';
 import '../../theme/app_spacing.dart';
-import '../model_selector.dart';
+import '../add_to_chat_sheet.dart';
+import '../app_bottom_sheet.dart';
+import '../connectors_sheet.dart';
 
 part 'composer_round_button.dart';
-
-enum ComposerPlacement { hero, docked }
 
 class ChatComposer extends StatefulWidget {
   const ChatComposer({
@@ -19,16 +19,15 @@ class ChatComposer extends StatefulWidget {
     this.onStop,
     this.isStreaming = false,
     this.enabled = true,
-    this.hintText = AppConstants.composerHint,
-    this.placement = ComposerPlacement.docked,
+    this.hintText,
   });
 
   final ValueChanged<String> onSend;
   final VoidCallback? onStop;
   final bool isStreaming;
   final bool enabled;
-  final String hintText;
-  final ComposerPlacement placement;
+
+  final String? hintText;
 
   @override
   State<ChatComposer> createState() => _ChatComposerState();
@@ -38,6 +37,7 @@ class _ChatComposerState extends State<ChatComposer>
     with SingleTickerProviderStateMixin {
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
+  final _fieldKey = GlobalKey();
   late final AnimationController _pulse;
 
   bool get _canSend =>
@@ -45,7 +45,8 @@ class _ChatComposerState extends State<ChatComposer>
       !widget.isStreaming &&
       _controller.text.trim().isNotEmpty;
 
-  bool get _isHero => widget.placement == ComposerPlacement.hero;
+  bool get _expanded =>
+      _focusNode.hasFocus || _controller.text.isNotEmpty || widget.isStreaming;
 
   @override
   void initState() {
@@ -91,98 +92,155 @@ class _ChatComposerState extends State<ChatComposer>
     widget.onStop?.call();
   }
 
+  void _openSheet(WidgetBuilder builder) {
+    if (!widget.enabled || widget.isStreaming) return;
+    HapticFeedback.selectionClick();
+    _focusNode.unfocus();
+    AppBottomSheet.show(context, builder: builder);
+  }
+
+  void _openAddSheet() {
+    _openSheet((_) => const AddToChatSheet());
+  }
+
+  void _openConnectors() {
+    _openSheet((_) => const ConnectorsSheet());
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-    final focused = _focusNode.hasFocus;
     final controlsEnabled = widget.enabled && !widget.isStreaming;
     final motion = AppMotion.of(context, AppMotion.normal);
+    final expanded = _expanded;
 
-    final field = AnimatedContainer(
+    final chrome = AnimatedContainer(
       duration: motion,
       curve: AppMotion.standard,
       decoration: BoxDecoration(
         color: colors.surface,
-        borderRadius: BorderRadius.circular(_isHero ? AppRadii.xl : AppRadii.lg),
-        border: Border.all(
-          color: focused
-              ? colors.onSurface.withValues(alpha: 0.38)
-              : colors.outline.withValues(alpha: 0.9),
-          width: focused ? 1.35 : AppSpacing.stroke,
+        borderRadius: BorderRadius.circular(
+          expanded ? AppRadii.xl : AppRadii.pill,
         ),
         boxShadow: [
           BoxShadow(
-            color: colors.shadow.withValues(
-              alpha: focused
-                  ? (_isHero ? 0.12 : 0.08)
-                  : (_isHero ? 0.07 : 0.04),
-            ),
-            blurRadius: focused
-                ? (_isHero ? 32 : 22)
-                : (_isHero ? 26 : 14),
-            offset: Offset(0, _isHero ? 10 : 4),
+            color: colors.shadow.withValues(alpha: isDark ? 0.22 : 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: AnimatedSize(
-                duration: motion,
-                curve: AppMotion.standard,
-                alignment: Alignment.topCenter,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextField(
-                      controller: _controller,
-                      focusNode: _focusNode,
-                      enabled: controlsEnabled,
-                      minLines: _isHero ? 2 : 1,
-                      maxLines: 6,
-                      textInputAction: TextInputAction.newline,
-                      onChanged: (_) => setState(() {}),
-                      style: theme.textTheme.bodyLarge,
-                      cursorColor: colors.onSurface,
-                      decoration: InputDecoration(
-                        hintText: widget.hintText,
-                        hintStyle: theme.textTheme.bodyLarge?.copyWith(
-                          color: colors.onSurfaceVariant.withValues(alpha: 0.85),
-                        ),
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        disabledBorder: InputBorder.none,
-                        filled: false,
-                        contentPadding: EdgeInsets.fromLTRB(
-                          AppSpacing.md,
-                          _isHero ? 16 : 14,
-                          AppSpacing.sm,
-                          6,
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.md,
-                        0,
-                        AppSpacing.sm,
-                        AppSpacing.sm,
-                      ),
-                      child: ModelSelector(enabled: controlsEnabled),
-                    ),
-                  ],
-                ),
-              ),
+      child: AnimatedSize(
+        duration: motion,
+        curve: AppMotion.standard,
+        alignment: Alignment.bottomCenter,
+        child: expanded
+            ? _expandedBody(theme, colors, isDark, controlsEnabled)
+            : _collapsedBody(theme, colors, controlsEnabled),
+      ),
+    );
+
+    return SafeArea(
+      top: false,
+      left: false,
+      right: false,
+      bottom: true,
+      minimum: EdgeInsets.only(
+        bottom: MediaQuery.viewPaddingOf(context).bottom > 0
+            ? 0
+            : AppSpacing.xs,
+      ),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          AppBreakpoints.pagePadding(context),
+          AppSpacing.xs,
+          AppBreakpoints.pagePadding(context),
+          AppSpacing.sm,
+        ),
+        child: chrome,
+      ),
+    );
+  }
+
+  Widget _collapsedBody(
+    ThemeData theme,
+    ColorScheme colors,
+    bool controlsEnabled,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxs),
+      child: Row(
+        children: [
+          _ComposerGlyph(
+            icon: Icons.add,
+            tooltip: AppConstants.addToChatTitle,
+            onPressed: controlsEnabled ? _openAddSheet : null,
+          ),
+          Expanded(
+            child: _input(
+              theme: theme,
+              colors: colors,
+              enabled: controlsEnabled,
+              hint: _hint(idle: true),
+              maxLines: 1,
+              padding: EdgeInsets.zero,
             ),
-            Padding(
-              padding: const EdgeInsets.only(right: AppSpacing.xs),
-              child: AnimatedSwitcher(
+          ),
+          const _ComposerGlyph(icon: Icons.mic_none_rounded),
+          const SizedBox(width: AppSpacing.xxs),
+        ],
+      ),
+    );
+  }
+
+  Widget _expandedBody(
+    ThemeData theme,
+    ColorScheme colors,
+    bool isDark,
+    bool controlsEnabled,
+  ) {
+    final motion = AppMotion.of(context, AppMotion.normal);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _input(
+          theme: theme,
+          colors: colors,
+          enabled: controlsEnabled,
+          hint: _hint(idle: false),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            14,
+            AppSpacing.md,
+            AppSpacing.sm,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.xxs,
+            0,
+            AppSpacing.xxs,
+            AppSpacing.xs,
+          ),
+          child: Row(
+            children: [
+              _ComposerGlyph(
+                icon: Icons.add,
+                tooltip: AppConstants.addToChatTitle,
+                onPressed: controlsEnabled ? _openAddSheet : null,
+              ),
+              _ComposerGlyph(
+                icon: Icons.electrical_services_outlined,
+                tooltip: AppConstants.settingsConnectors,
+                onPressed: controlsEnabled ? _openConnectors : null,
+              ),
+              const Spacer(),
+              const _ComposerGlyph(icon: Icons.mic_none_rounded),
+              AnimatedSwitcher(
                 duration: motion,
                 switchInCurve: AppMotion.enter,
                 switchOutCurve: AppMotion.exit,
@@ -217,48 +275,66 @@ class _ChatComposerState extends State<ChatComposer>
                         onPressed: _canSend ? _submit : null,
                         foreground: _canSend
                             ? (isDark ? colors.surface : colors.onPrimary)
-                            : (isDark
-                                ? colors.onSurfaceVariant
-                                : colors.onSurface),
+                            : colors.onSurfaceVariant,
                         filled: true,
                         fillColor: _canSend
                             ? (isDark ? colors.onSurface : colors.primary)
-                            : colors.outline,
+                            : colors.surfaceContainerHighest,
                         dimWhenDisabled: false,
                         emphasize: _canSend,
                       ),
               ),
-            ),
-          ],
+              const SizedBox(width: AppSpacing.xxs),
+            ],
+          ),
         ),
-      ),
+      ],
     );
+  }
 
-    if (_isHero) {
-      return Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: AppBreakpoints.pagePadding(context),
-        ),
-        child: field,
-      );
-    }
+  String _hint({required bool idle}) {
+    final override = widget.hintText;
+    if (override != null) return override;
+    return idle
+        ? AppConstants.composerIdleHint
+        : AppConstants.composerActiveHint;
+  }
 
-    return SafeArea(
-      top: false,
-      left: false,
-      right: false,
-      bottom: true,
-      minimum: EdgeInsets.only(
-        bottom: MediaQuery.viewPaddingOf(context).bottom > 0 ? 0 : AppSpacing.xs,
-      ),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          AppBreakpoints.pagePadding(context),
-          AppSpacing.xs,
-          AppBreakpoints.pagePadding(context),
-          AppSpacing.sm,
+  Widget _input({
+    required ThemeData theme,
+    required ColorScheme colors,
+    required bool enabled,
+    required String hint,
+    required EdgeInsets padding,
+    int minLines = 1,
+    int maxLines = 6,
+  }) {
+    return TextField(
+      key: _fieldKey,
+      controller: _controller,
+      focusNode: _focusNode,
+      enabled: enabled,
+      minLines: minLines,
+      maxLines: maxLines,
+      textInputAction: TextInputAction.newline,
+      onChanged: (_) => setState(() {}),
+      style: theme.textTheme.bodyLarge,
+      cursorColor: colors.onSurface,
+      decoration: InputDecoration(
+        isCollapsed: true,
+        hintText: hint,
+        hintStyle: theme.textTheme.bodyLarge?.copyWith(
+          color: colors.onSurfaceVariant.withValues(alpha: 0.9),
         ),
-        child: field,
+        border: InputBorder.none,
+        enabledBorder: InputBorder.none,
+        focusedBorder: InputBorder.none,
+        disabledBorder: InputBorder.none,
+        filled: false,
+        fillColor: Colors.transparent,
+        hoverColor: Colors.transparent,
+        focusColor: Colors.transparent,
+        contentPadding: padding,
       ),
     );
   }

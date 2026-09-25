@@ -2,6 +2,6 @@
   "FLAVOR": "dev",
   "APP_NAME": "Ellena Dev",
   "API_BASE_URL": "https://generativelanguage.googleapis.com",
-  "GEMINI_MODEL": "gemini-3.8-flash",
+  "GEMINI_MODEL": "gemini-3.5-flash-lite",
   "ENABLE_FAKE_STREAM": "false"
 }

@@ -20,7 +20,7 @@ abstract final class GeminiModels {
   );
 
   static const flash = LlmModel(
-    id: 'gemini-3.8-flash',
+    id: 'gemini-3.5-flash',
     label: AppConstants.modelFlashLabel,
     subtitle: AppConstants.modelFlashSubtitle,
   );

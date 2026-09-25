@@ -44,65 +44,79 @@ class GeminiStreamingService implements StreamingService {
   }) async* {
     if (generation != _generation) return;
 
-    await _abortHttp();
-    if (generation != _generation) return;
+    try {
+      await _abortHttp();
+      if (generation != _generation) return;
 
-    _cancelToken = CancelToken();
-    final token = _cancelToken!;
-    final cursor = StreamCursor(generation);
+      _cancelToken = CancelToken();
+      final token = _cancelToken!;
+      final cursor = StreamCursor(generation);
 
-    bool alive() => generation == _generation && !token.isCancelled;
+      bool alive() => generation == _generation && !token.isCancelled;
 
-    final contents = <Map<String, dynamic>>[
-      for (final turn in history)
+      final contents = <Map<String, dynamic>>[
+        for (final turn in history)
+          {
+            'role': turn.role == 'assistant' ? 'model' : 'user',
+            'parts': [
+              {'text': turn.text},
+            ],
+          },
         {
-          'role': turn.role == 'assistant' ? 'model' : 'user',
+          'role': 'user',
           'parts': [
-            {'text': turn.text},
+            {'text': prompt},
           ],
         },
-      {
-        'role': 'user',
-        'parts': [
-          {'text': prompt},
-        ],
-      },
-    ];
+      ];
 
-    final result = await _repository.streamGeminiGenerateContent(
-      model: model,
-      body: {'contents': contents},
-      cancelToken: token,
-    );
-    if (!alive()) return;
-
-    final response = result.when(
-      success: (value) => value,
-      failure: (error, stackTrace) {
-        if (error is ApiException) throw error;
-        Error.throwWithStackTrace(error, stackTrace ?? StackTrace.current);
-      },
-    );
-
-    final body = response.data;
-    if (body == null) return;
-
-    await for (final json in GeminiSseParser.parse(body.stream)) {
+      final result = await _repository.streamGeminiGenerateContent(
+        model: model,
+        body: {'contents': contents},
+        cancelToken: token,
+      );
       if (!alive()) return;
 
-      final parsed = GeminiResponse.parse(json);
-      final text = parsed.text;
-      if (text != null) yield cursor.text(text);
+      final response = result.when(
+        success: (value) => value,
+        failure: (error, stackTrace) {
+          if (_isUserCancel(error) || !alive()) return null;
+          if (error is ApiException) throw error;
+          Error.throwWithStackTrace(error, stackTrace ?? StackTrace.current);
+        },
+      );
+      final body = response?.data;
+      if (body == null) return;
 
-      final finish = parsed.finishReason;
-      if (finish != null) {
-        yield cursor.meta(StreamEvent.finishReasonKey, finish);
+      await for (final json in GeminiSseParser.parse(body.stream)) {
+        if (!alive()) return;
+
+        final parsed = GeminiResponse.parse(json);
+        final text = parsed.text;
+        if (text != null) yield cursor.text(text);
+
+        final finish = parsed.finishReason;
+        if (finish != null) {
+          yield cursor.meta(StreamEvent.finishReasonKey, finish);
+        }
+        final policy = parsed.policyReason;
+        if (policy != null) {
+          yield cursor.meta(StreamEvent.contentPolicyKey, policy);
+        }
       }
-      final policy = parsed.policyReason;
-      if (policy != null) {
-        yield cursor.meta(StreamEvent.contentPolicyKey, policy);
-      }
+    } on DioException catch (error) {
+      if (_isUserCancel(error) || generation != _generation) return;
+      throw ApiException.fromDio(error);
+    } on ApiException catch (error) {
+      if (error.isCancel || generation != _generation) return;
+      rethrow;
     }
+  }
+
+  bool _isUserCancel(Object error) {
+    if (error is ApiException) return error.isCancel;
+    if (error is DioException) return error.type == DioExceptionType.cancel;
+    return false;
   }
 
   Future<void> _abortHttp() async {

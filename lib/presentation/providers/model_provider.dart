@@ -12,6 +12,4 @@ class SelectedModelNotifier extends Notifier<LlmModel> {
     final config = ref.watch(appConfigProvider);
     return GeminiModels.byId(config.geminiModel);
   }
-
-  void select(LlmModel model) => state = model;
 }

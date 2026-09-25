@@ -1,87 +1,127 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../navigation/app_routes.dart';
+import '../providers/providers.dart';
 import '../theme/app_spacing.dart';
-import 'chat_shell.dart';
+import 'account_mark.dart';
+import 'workspace_tabs.dart';
 
-class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
-  const AppTopBar({
-    super.key,
-    required this.title,
-    this.actions,
-    this.showAccount = true,
-  });
+class AppTopBar extends ConsumerWidget implements PreferredSizeWidget {
+  const AppTopBar({super.key});
 
-  final Widget title;
-  final List<Widget>? actions;
-  final bool showAccount;
+  static const _side = AppSpacing.tap + AppSpacing.sm;
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tasks = ref.watch(workspaceTabProvider) == WorkspaceTab.tasks;
+    final search = ref.watch(taskSearchProvider);
+    final searching = tasks && search.open;
     final colors = Theme.of(context).colorScheme;
-    final theme = Theme.of(context);
-    final initial = AppConstants.mockUserName.isNotEmpty
-        ? AppConstants.mockUserName[0].toUpperCase()
-        : '?';
 
     return AppBar(
       systemOverlayStyle: Theme.of(context).brightness == Brightness.dark
           ? SystemUiOverlayStyle.light
           : SystemUiOverlayStyle.dark,
+      centerTitle: !searching,
+      leadingWidth: _side,
+      titleSpacing: searching ? AppSpacing.xs : 0,
       leading: IconButton(
-        tooltip: AppConstants.menuTooltip,
+        tooltip: AppConstants.accountTooltip,
         onPressed: () {
           HapticFeedback.selectionClick();
-          ChatShell.scaffoldKey.currentState?.openDrawer();
+          context.push(AppRoutes.account);
         },
-        style: IconButton.styleFrom(
-          minimumSize: const Size(AppSpacing.tap, AppSpacing.tap),
-          foregroundColor: colors.onSurface,
-        ),
-        icon: const Icon(Icons.menu_rounded, size: 22),
+        icon: const AccountMark(),
       ),
-      title: title,
-      titleSpacing: 0,
+      title: searching ? const _TaskSearchField() : const WorkspaceTabs(),
       actions: [
-        ...?actions,
-        if (showAccount)
-          Padding(
-            padding: const EdgeInsets.only(right: AppSpacing.xs),
-            child: IconButton(
-              tooltip: AppConstants.accountTooltip,
-              onPressed: () {
-                HapticFeedback.selectionClick();
-                context.push(AppRoutes.account);
-              },
-              style: IconButton.styleFrom(
-                minimumSize: const Size(AppSpacing.tap, AppSpacing.tap),
-              ),
-              icon: Container(
-                width: 30,
-                height: 30,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: colors.primary,
-                ),
-                child: Text(
-                  initial,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: colors.onPrimary,
-                    fontWeight: FontWeight.w600,
-                    height: 1,
-                  ),
-                ),
-              ),
-            ),
-          ),
+        SizedBox(
+          width: _side,
+          child: searching
+              ? IconButton(
+                  tooltip: AppConstants.closeSearchTooltip,
+                  onPressed: () {
+                    HapticFeedback.selectionClick();
+                    FocusManager.instance.primaryFocus?.unfocus();
+                    ref.read(taskSearchProvider.notifier).close();
+                  },
+                  icon: const Icon(Icons.close),
+                )
+              : tasks
+                  ? IconButton(
+                      tooltip: AppConstants.searchTooltip,
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        ref.read(taskSearchProvider.notifier).open();
+                      },
+                      icon: Icon(Icons.search, color: colors.onSurface),
+                    )
+                  : null,
+        ),
       ],
+    );
+  }
+}
+
+class _TaskSearchField extends ConsumerStatefulWidget {
+  const _TaskSearchField();
+
+  @override
+  ConsumerState<_TaskSearchField> createState() => _TaskSearchFieldState();
+}
+
+class _TaskSearchFieldState extends ConsumerState<_TaskSearchField> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: ref.read(taskSearchProvider).query);
+    _focusNode = FocusNode();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focusNode.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    return TextField(
+      controller: _controller,
+      focusNode: _focusNode,
+      textInputAction: TextInputAction.search,
+      style: theme.textTheme.bodyLarge,
+      cursorColor: colors.onSurface,
+      onChanged: ref.read(taskSearchProvider.notifier).setQuery,
+      decoration: InputDecoration(
+        isCollapsed: true,
+        hintText: AppConstants.searchHint,
+        hintStyle: theme.textTheme.bodyLarge?.copyWith(
+          color: colors.onSurfaceVariant,
+        ),
+        border: InputBorder.none,
+        enabledBorder: InputBorder.none,
+        focusedBorder: InputBorder.none,
+        filled: false,
+        contentPadding: EdgeInsets.zero,
+      ),
     );
   }
 }

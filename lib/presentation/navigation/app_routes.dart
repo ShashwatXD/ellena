@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../common_widgets/chat_shell.dart';
 import '../screens/account/account_screen.dart';
 import '../screens/home/home_screen.dart';
 
@@ -43,22 +42,15 @@ CustomTransitionPage<void> _fadeSlidePage({
 }
 
 List<RouteBase> get appRoutes => [
-      ShellRoute(
-        builder: (context, state, child) => ChatShell(child: child),
-        routes: [
-          GoRoute(
-            path: AppRoutes.home,
-            name: AppRoutes.homeName,
-            builder: (context, state) => const HomeScreen(),
-          ),
-        ],
-      ),
-      GoRoute(
-        path: AppRoutes.account,
-        name: AppRoutes.accountName,
-        pageBuilder: (context, state) => _fadeSlidePage(
-          state: state,
-          child: const AccountScreen(),
-        ),
-      ),
-    ];
+  GoRoute(
+    path: AppRoutes.home,
+    name: AppRoutes.homeName,
+    builder: (context, state) => const HomeScreen(),
+  ),
+  GoRoute(
+    path: AppRoutes.account,
+    name: AppRoutes.accountName,
+    pageBuilder: (context, state) =>
+        _fadeSlidePage(state: state, child: const AccountScreen()),
+  ),
+];

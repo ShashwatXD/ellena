@@ -196,9 +196,6 @@ class ChatNotifier extends Notifier<ChatState> {
 
     messages[index] = messages[index].copyWith(
       status: MessageStatus.stopped,
-      content: messages[index].content.isEmpty
-          ? AppConstants.stoppedLabel
-          : messages[index].content,
     );
 
     _cache.unprotect(conversationId, keep: state.activeConversationId);

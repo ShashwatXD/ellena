@@ -22,6 +22,8 @@ class _AssistantBubble extends StatelessWidget {
     final complete = message.status == MessageStatus.complete;
     final stopped = message.status == MessageStatus.stopped;
     final empty = message.content.isEmpty;
+    final stoppedBeforeReply = stopped &&
+        (empty || message.content == AppConstants.stoppedLabel);
     final inlineCodeStyle = AppTypography.codeStyle(colors.onSurface);
 
     return Align(
@@ -33,30 +35,10 @@ class _AssistantBubble extends StatelessWidget {
           children: [
             if (empty && streaming)
               const _LoadingDots()
+            else if (stoppedBeforeReply)
+              const _ErrorLine(label: AppConstants.stoppedLabel)
             else if (empty && failed)
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Icon(
-                      Icons.error_outline_rounded,
-                      size: 18,
-                      color: colors.error.withValues(alpha: 0.85),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      message.error ?? AppConstants.genericError,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        color: colors.onSurfaceVariant,
-                        height: 1.5,
-                      ),
-                    ),
-                  ),
-                ],
-              )
+              _ErrorLine(label: message.error ?? AppConstants.genericError)
             else ...[
               StreamingTextMarkdown(
                 key: ValueKey(
@@ -83,7 +65,7 @@ class _AssistantBubble extends StatelessWidget {
                 const _StreamingCaret(),
               ],
             ],
-            if (stopped) ...[
+            if (stopped && !stoppedBeforeReply) ...[
               const SizedBox(height: AppSpacing.xs),
               _StatusChip(
                 label: AppConstants.interruptedLabel,
@@ -100,7 +82,7 @@ class _AssistantBubble extends StatelessWidget {
                 onRetry: onRetry,
               ),
             ],
-            if (!empty && (complete || stopped)) ...[
+            if (!stoppedBeforeReply && !empty && (complete || stopped)) ...[
               const SizedBox(height: AppSpacing.sm),
               _AssistantActions(
                 content: message.content,

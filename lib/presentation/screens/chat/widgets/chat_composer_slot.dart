@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/constants/app_constants.dart';
 import '../../../../core/models/message_status.dart';
 import '../../../common_widgets/chat_composer/chat_composer.dart';
 import '../../../providers/providers.dart';
@@ -25,7 +24,6 @@ class ChatComposerSlot extends ConsumerWidget {
 
     return ChatComposer(
       isStreaming: streaming,
-      hintText: AppConstants.composerHint,
       onSend: (text) {
         ref.read(chatProvider.notifier).sendMessage(conversationId, text);
       },

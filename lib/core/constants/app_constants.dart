@@ -1,17 +1,48 @@
-import 'package:flutter/material.dart';
-
 abstract final class AppConstants {
   static const String appName = 'Ellena';
   static const String homeHeadline = 'What can I do for you?';
-  static const String composerHint = 'Ask anything';
+  static const String composerIdleHint = 'Send message to Ellena';
+  static const String composerActiveHint = 'Message Ellena';
+  static const String addToChatTitle = 'Add to chat';
+  static const String closeTooltip = 'Close';
+  static const String addCamera = 'Camera';
+  static const String addPicture = 'Picture';
+  static const String addFile = 'File';
+  static const String addCreateImage = 'Create image';
+  static const String addEditImage = 'Edit image';
+  static const String addGenerateAudio = 'Generate audio';
+  static const String addCreateVideo = 'Create video';
+  static const String addCreateGames = 'Create games';
+  static const String addNewBadge = 'New';
+  static const String addCreateSlides = 'Create slides';
+  static const String addBuildWebsite = 'Build website';
+  static const String addDevelopApps = 'Develop apps';
+  static const String addCreateSpreadsheet = 'Create spreadsheet';
+  static const String addConnectors = 'Add connectors';
+  static const String manageConnectors = 'Manage connectors';
+  static const String connectAction = 'Connect';
+  static const String betaBadge = 'Beta';
+  static const String connectorShopify = 'Shopify';
+  static const String connectorOutlookCalendar = 'Outlook Calendar';
+  static const String connectorOutlookMail = 'Outlook Mail';
+  static const String connectorInstagramCreator = 'Instagram Creator';
+  static const String connectorGoogleCalendar = 'Google Calendar';
+  static const String connectorMetaAds = 'Meta Ads Manager';
+  static const String connectorGoogleWorkspace = 'Google Workspace';
+  static const String connectorInstagram = 'Instagram';
 
   static const String sendTooltip = 'Send';
   static const String stopTooltip = 'Stop';
   static const String scrollToBottomTooltip = 'Jump to latest';
-  static const String modelTooltip = 'Model';
-  static const String menuTooltip = 'Menu';
+  static const String tasksTab = 'Tasks';
+  static const String agentTab = 'Agent';
+  static const String searchTooltip = 'Search';
+  static const String searchHint = 'Search chats';
+  static const String noSearchMatches = 'No matches';
+  static const String closeSearchTooltip = 'Close search';
   static const String newChatTooltip = 'New chat';
   static const String newChatLabel = 'New chat';
+  static const String startNewChatLabel = 'Start new chat';
   static const String chatActionsTooltip = 'Chat actions';
   static const String pinChatLabel = 'Pin';
   static const String unpinChatLabel = 'Unpin';
@@ -48,8 +79,7 @@ abstract final class AppConstants {
   static const String invalidRequest = 'Invalid request';
   static const String modelNotFound = 'Model not found';
   static const String serverError = 'Server error';
-  static const String serviceUnavailable =
-      'Service temporarily unavailable';
+  static const String serviceUnavailable = 'Service temporarily unavailable';
   static const String requestTimedOut = 'Request timed out';
   static const String connectionFailed = 'Connection failed';
   static const String noInternetConnection = 'No internet connection';
@@ -58,7 +88,7 @@ abstract final class AppConstants {
 
   static const String modelFlashLiteLabel = '3.5 Flash-Lite';
   static const String modelFlashLiteSubtitle = 'Fast';
-  static const String modelFlashLabel = '3.8 Flash';
+  static const String modelFlashLabel = '3.5 Flash';
   static const String modelFlashSubtitle = 'Balanced';
   static const String modelProLabel = '3.1 Pro';
   static const String modelProSubtitle = 'Stronger';
@@ -97,13 +127,6 @@ abstract final class AppConstants {
   static const String mockResponsesLabel = 'Mock responses';
   static const String usingMockStream = 'Using mock stream';
   static const String usingGeminiStream = 'Using Gemini';
-
-static const List<({IconData icon, String label})> homeSuggestions = [
-  (icon: Icons.auto_awesome, label: 'Learn something'),
-  (icon: Icons.lightbulb_outline, label: 'Brainstorm ideas'),
-  (icon: Icons.code_outlined, label: 'Help me code'),
-  (icon: Icons.edit_outlined, label: 'Write something'),
-];
 
   static const String mockScenarioShort = 'Short';
   static const String mockScenarioMarkdown = 'Markdown';
@@ -144,9 +167,7 @@ static const List<({IconData icon, String label})> homeSuggestions = [
     'so you can tap Stop mid-flight.',
   ];
 
-  static const List<String> mockChunksErrorEarly = [
-    'unreachable',
-  ];
+  static const List<String> mockChunksErrorEarly = ['unreachable'];
 
   static const List<String> mockChunksErrorMid = [
     'Partial answer so far.\n\n',

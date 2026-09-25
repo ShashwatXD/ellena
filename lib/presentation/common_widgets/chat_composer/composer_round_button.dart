@@ -1,5 +1,36 @@
 part of 'chat_composer.dart';
 
+class _ComposerGlyph extends StatelessWidget {
+  const _ComposerGlyph({
+    required this.icon,
+    this.onPressed,
+    this.tooltip,
+  });
+
+  final IconData icon;
+  final VoidCallback? onPressed;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final iconWidget = Icon(
+      icon,
+      size: 22,
+      color: Theme.of(context).colorScheme.onSurface,
+    );
+    if (onPressed == null) {
+      return SizedBox(width: 40, height: 40, child: iconWidget);
+    }
+    return IconButton(
+      tooltip: tooltip ?? '',
+      onPressed: onPressed,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(width: 40, height: 40),
+      icon: iconWidget,
+    );
+  }
+}
+
 class _RoundIconButton extends StatefulWidget {
   const _RoundIconButton({
     super.key,

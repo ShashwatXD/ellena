@@ -1,24 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../core/constants/app_constants.dart';
-import '../../core/models/conversation.dart';
-import '../navigation/app_routes.dart';
-import '../providers/providers.dart';
-import '../theme/app_motion.dart';
-import '../theme/app_radii.dart';
-import '../theme/app_spacing.dart';
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/models/conversation.dart';
+import '../../../providers/providers.dart';
+import '../../../theme/app_motion.dart';
+import '../../../theme/app_radii.dart';
+import '../../../theme/app_spacing.dart';
 
-class ChatDrawer extends ConsumerWidget {
-  const ChatDrawer({super.key});
+class TasksPane extends ConsumerWidget {
+  const TasksPane({super.key});
 
-  void _newChat(BuildContext context, WidgetRef ref) {
+  void _newChat(WidgetRef ref) {
     HapticFeedback.selectionClick();
     ref.read(chatProvider.notifier).startNewChat();
-    Navigator.of(context).pop();
-    context.go(AppRoutes.home);
+    ref.read(workspaceTabProvider.notifier).select(WorkspaceTab.agent);
   }
 
   @override
@@ -28,134 +25,167 @@ class ChatDrawer extends ConsumerWidget {
     final chat = ref.watch(chatProvider);
     final conversations = chat.conversations;
     final activeId = chat.activeConversationId;
-    final pinned = conversations.where((c) => c.isPinned).toList();
-    final recent = conversations.where((c) => !c.isPinned).toList();
+    final query = ref.watch(taskSearchProvider).query;
+    final visible = [
+      for (final conversation in conversations)
+        if (_matches(ref, conversation, query)) conversation,
+    ];
+    final pinned = visible.where((c) => c.isPinned).toList();
+    final recent = visible.where((c) => !c.isPinned).toList();
+    final searching = query.trim().isNotEmpty;
+    final noHistory = conversations.isEmpty;
+    final showFab = !noHistory;
 
     return SafeArea(
+      top: false,
       left: false,
       right: false,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Stack(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 18, 16, 8),
-            child: Text(
-              AppConstants.appName.toLowerCase(),
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-                letterSpacing: -0.35,
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-            child: _NewChatButton(onPressed: () => _newChat(context, ref)),
-          ),
-          Divider(
-            height: 1,
-            thickness: AppSpacing.stroke,
-            color: colors.outline,
-          ),
-          Expanded(
-            child: conversations.isEmpty
-                ? Center(
-                    child: Text(
-                      AppConstants.noChatsYet,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colors.onSurfaceVariant,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: visible.isEmpty
+                    ? Center(
+                        child: noHistory && !searching
+                            ? _StartNewChat(
+                                large: true,
+                                onPressed: () => _newChat(ref),
+                              )
+                            : Text(
+                                AppConstants.noSearchMatches,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: colors.onSurfaceVariant,
+                                ),
+                              ),
+                      )
+                    : ListView(
+                        padding: const EdgeInsets.fromLTRB(
+                          0,
+                          AppSpacing.xs,
+                          0,
+                          88,
+                        ),
+                        children: [
+                          if (pinned.isNotEmpty) ...[
+                            const _SectionLabel(
+                              label: AppConstants.pinnedSection,
+                            ),
+                            ...pinned.map(
+                              (c) => _ConversationTile(
+                                conversation: c,
+                                selected: c.id == activeId,
+                              ),
+                            ),
+                          ],
+                          if (recent.isNotEmpty) ...[
+                            const _SectionLabel(
+                              label: AppConstants.recentSection,
+                            ),
+                            ...recent.map(
+                              (c) => _ConversationTile(
+                                conversation: c,
+                                selected: c.id == activeId,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                    ),
-                  )
-                : ListView(
-                    padding:
-                        const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-                    children: [
-                      if (pinned.isNotEmpty) ...[
-                        const _SectionLabel(label: AppConstants.pinnedSection),
-                        ...pinned.map(
-                          (c) => _ConversationTile(
-                            conversation: c,
-                            selected: c.id == activeId,
-                          ),
-                        ),
-                      ],
-                      if (recent.isNotEmpty) ...[
-                        const _SectionLabel(label: AppConstants.recentSection),
-                        ...recent.map(
-                          (c) => _ConversationTile(
-                            conversation: c,
-                            selected: c.id == activeId,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
+              ),
+            ],
           ),
+          if (showFab)
+            Positioned(
+              right: AppSpacing.md,
+              bottom: AppSpacing.md,
+              child: _StartNewChat(onPressed: () => _newChat(ref)),
+            ),
         ],
       ),
     );
   }
 }
 
-class _NewChatButton extends StatefulWidget {
-  const _NewChatButton({required this.onPressed});
+bool _matches(WidgetRef ref, Conversation conversation, String query) {
+  final needle = query.trim().toLowerCase();
+  if (needle.isEmpty) return true;
+  if (conversation.title.toLowerCase().contains(needle)) return true;
 
-  final VoidCallback onPressed;
-
-  @override
-  State<_NewChatButton> createState() => _NewChatButtonState();
+  final messages = ref.read(chatStorageProvider).loadMessages(conversation.id);
+  for (final message in messages) {
+    if (message.content.toLowerCase().contains(needle)) return true;
+  }
+  return false;
 }
 
-class _NewChatButtonState extends State<_NewChatButton> {
+class _StartNewChat extends StatefulWidget {
+  const _StartNewChat({required this.onPressed, this.large = false});
+
+  final VoidCallback onPressed;
+  final bool large;
+
+  @override
+  State<_StartNewChat> createState() => _StartNewChatState();
+}
+
+class _StartNewChatState extends State<_StartNewChat> {
   bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final fill = isDark ? colors.onSurface : colors.primary;
+    final foreground = isDark ? colors.surface : colors.onPrimary;
     final motion = AppMotion.of(context, AppMotion.fast);
+    final size = widget.large ? 72.0 : AppSpacing.tap;
+    final iconSize = widget.large ? 32.0 : AppSpacing.icon;
 
-    return AnimatedScale(
-      scale: _pressed ? 0.98 : 1,
+    final disc = AnimatedScale(
+      scale: _pressed ? 0.94 : 1,
       duration: motion,
       curve: AppMotion.standard,
       child: Material(
-        color: colors.surfaceContainerHighest.withValues(alpha: 0.55),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadii.md),
-          side: BorderSide(
-            color: colors.outline,
-            width: AppSpacing.stroke,
-          ),
-        ),
+        color: fill,
+        shape: const CircleBorder(),
+        elevation: widget.large ? 0 : 2,
+        shadowColor: colors.shadow.withValues(alpha: 0.2),
         child: InkWell(
-          borderRadius: BorderRadius.circular(AppRadii.md),
+          customBorder: const CircleBorder(),
+          onTap: widget.onPressed,
           onTapDown: (_) => setState(() => _pressed = true),
           onTapCancel: () => setState(() => _pressed = false),
           onTapUp: (_) => setState(() => _pressed = false),
-          onTap: widget.onPressed,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.edit_square,
-                  size: 18,
-                  color: colors.onSurface.withValues(alpha: 0.9),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  AppConstants.newChatLabel,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.1,
-                  ),
-                ),
-              ],
-            ),
+          child: SizedBox(
+            width: size,
+            height: size,
+            child: Icon(Icons.add, size: iconSize, color: foreground),
           ),
         ),
       ),
+    );
+
+    if (!widget.large) {
+      return Tooltip(message: AppConstants.startNewChatLabel, child: disc);
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        disc,
+        const SizedBox(height: AppSpacing.md),
+        GestureDetector(
+          onTap: widget.onPressed,
+          child: Text(
+            AppConstants.startNewChatLabel,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -172,19 +202,16 @@ class _SectionLabel extends StatelessWidget {
       child: Text(
         label.toUpperCase(),
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              letterSpacing: 0.6,
-            ),
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          letterSpacing: 0.6,
+        ),
       ),
     );
   }
 }
 
 class _ConversationTile extends ConsumerWidget {
-  const _ConversationTile({
-    required this.conversation,
-    required this.selected,
-  });
+  const _ConversationTile({required this.conversation, required this.selected});
 
   final Conversation conversation;
   final bool selected;
@@ -192,9 +219,8 @@ class _ConversationTile extends ConsumerWidget {
   Future<void> _rename(BuildContext context, WidgetRef ref) async {
     final next = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => _RenameChatDialog(
-        initialTitle: conversation.title,
-      ),
+      builder: (dialogContext) =>
+          _RenameChatDialog(initialTitle: conversation.title),
     );
     if (next == null || !context.mounted) return;
     ref.read(chatProvider.notifier).renameConversation(conversation.id, next);
@@ -256,8 +282,7 @@ class _ConversationTile extends ConsumerWidget {
           onTap: () {
             HapticFeedback.selectionClick();
             ref.read(chatProvider.notifier).openConversation(conversation.id);
-            Navigator.of(context).pop();
-            context.go(AppRoutes.home);
+            ref.read(workspaceTabProvider.notifier).select(WorkspaceTab.agent);
           },
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
@@ -279,8 +304,9 @@ class _ConversationTile extends ConsumerWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodyLarge?.copyWith(
-                        fontWeight:
-                            selected ? FontWeight.w600 : FontWeight.w400,
+                        fontWeight: selected
+                            ? FontWeight.w600
+                            : FontWeight.w400,
                       ),
                     ),
                   ),

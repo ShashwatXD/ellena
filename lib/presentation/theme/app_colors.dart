@@ -13,6 +13,9 @@ abstract final class AppColors {
 
   static const Color error = Color(0xFFB42318);
   static const Color avatarBlue = Color(0xFF3B82F6);
+  static const Color markGreen = Color(0xFF5C9E31);
+  static const Color markPink = Color(0xFFE1306C);
+  static const Color markYellow = Color(0xFFF4B400);
 
   static const Color primary = ink;
   static const Color seed = ink;

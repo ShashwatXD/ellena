@@ -7,10 +7,8 @@ import '../../providers/providers.dart';
 import '../../theme/app_breakpoints.dart';
 import '../../theme/app_motion.dart';
 import '../../theme/app_spacing.dart';
-import '../../common_widgets/app_top_bar.dart';
 import '../../common_widgets/message_bubble/message_bubble.dart';
 import 'widgets/chat_composer_slot.dart';
-import 'widgets/chat_title.dart';
 import 'widgets/jump_to_bottom_button.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
@@ -93,77 +91,66 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       }
     });
 
-    return Scaffold(
-      resizeToAvoidBottomInset: true,
-      appBar: AppTopBar(
-        title: ChatTitle(conversationId: widget.conversationId),
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: messageIds.isEmpty
-                ? SafeArea(
-                    top: false,
-                    child: Center(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: pagePad),
-                        child: Text(
-                          AppConstants.noMessages,
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
-                              ),
+    return Column(
+      children: [
+        Expanded(
+          child: messageIds.isEmpty
+              ? SafeArea(
+                  top: false,
+                  child: Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: pagePad),
+                      child: Text(
+                        AppConstants.noMessages,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ),
-                  )
-                : Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      ListView.separated(
-                        controller: _scrollController,
-                        keyboardDismissBehavior:
-                            ScrollViewKeyboardDismissBehavior.onDrag,
-                        padding: EdgeInsets.fromLTRB(
-                          pagePad,
-                          AppSpacing.sm,
-                          pagePad,
-                          AppSpacing.lg,
-                        ),
-                        itemCount: messageIds.length,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(height: AppSpacing.md),
-                        itemBuilder: (context, index) {
-                          final id = messageIds[index];
-                          return MessageBubble(
-                            key: ValueKey(id),
-                            conversationId: widget.conversationId,
-                            messageId: id,
-                          );
-                        },
-                      ),
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: AppSpacing.sm,
-                        child: Center(
-                          child: JumpToBottomButton(
-                            visible: _showJumpToBottom,
-                            onPressed: _jumpToBottom,
-                          ),
-                        ),
-                      ),
-                    ],
                   ),
-          ),
-          ChatComposerSlot(conversationId: widget.conversationId),
-        ],
-      ),
+                )
+              : Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    ListView.separated(
+                      controller: _scrollController,
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
+                      padding: EdgeInsets.fromLTRB(
+                        pagePad,
+                        AppSpacing.sm,
+                        pagePad,
+                        AppSpacing.lg,
+                      ),
+                      itemCount: messageIds.length,
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(height: AppSpacing.md),
+                      itemBuilder: (context, index) {
+                        final id = messageIds[index];
+                        return MessageBubble(
+                          key: ValueKey(id),
+                          conversationId: widget.conversationId,
+                          messageId: id,
+                        );
+                      },
+                    ),
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: AppSpacing.sm,
+                      child: Center(
+                        child: JumpToBottomButton(
+                          visible: _showJumpToBottom,
+                          onPressed: _jumpToBottom,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+        ChatComposerSlot(conversationId: widget.conversationId),
+      ],
     );
   }
 }

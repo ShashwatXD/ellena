@@ -41,7 +41,7 @@ class AppConfig {
       apiBaseUrl: json['API_BASE_URL'] as String? ??
           'https://generativelanguage.googleapis.com',
       geminiApiKey: geminiApiKey,
-      geminiModel: json['GEMINI_MODEL'] as String? ?? 'gemini-3.8-flash',
+      geminiModel: json['GEMINI_MODEL'] as String? ?? 'gemini-3.5-flash',
       enableFakeStream: (json['ENABLE_FAKE_STREAM'] as String? ?? 'true')
               .toLowerCase() ==
           'true',

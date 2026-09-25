@@ -1,136 +1,132 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../common_widgets/app_top_bar.dart';
+import '../../common_widgets/chat_composer/chat_composer.dart';
 import '../../providers/providers.dart';
 import '../../theme/app_breakpoints.dart';
 import '../../theme/app_motion.dart';
 import '../../theme/app_spacing.dart';
-import '../../common_widgets/chat_composer/chat_composer.dart';
-import '../../common_widgets/app_top_bar.dart';
-import 'widgets/mock_scenario_picker.dart';
-import '../../common_widgets/suggestion_chips.dart';
 import '../chat/chat_screen.dart';
+import 'widgets/tasks_pane.dart';
+import 'widgets/typing_headline.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
-  void _startChat(WidgetRef ref, String text) {
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  late final PageController _pages;
+  var _fromSwipe = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pages = PageController(initialPage: WorkspaceTab.agent.index);
+  }
+
+  @override
+  void dispose() {
+    _pages.dispose();
+    super.dispose();
+  }
+
+  void _startChat(String text) {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
     ref.read(chatProvider.notifier).startConversation(trimmed);
   }
 
+  void _onPageChanged(int index) {
+    final next = WorkspaceTab.values[index];
+    if (ref.read(workspaceTabProvider) == next) return;
+    HapticFeedback.selectionClick();
+    FocusManager.instance.primaryFocus?.unfocus();
+    _fromSwipe = true;
+    ref.read(workspaceTabProvider.notifier).select(next);
+    _fromSwipe = false;
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final activeId = ref.watch(
       chatProvider.select((s) => s.activeConversationId),
     );
-    if (activeId != null) {
-      return ChatScreen(conversationId: activeId);
-    }
 
-    final theme = Theme.of(context);
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    final pagePad = AppBreakpoints.pagePadding(context);
-    final gap = AppBreakpoints.sectionGap(context);
-    final compact = AppBreakpoints.isCompact(context);
-    final showMockChips = ref.watch(useFakeStreamProvider);
+    ref.listen(workspaceTabProvider, (previous, next) {
+      if (_fromSwipe || !_pages.hasClients) return;
+      if (_pages.page?.round() == next.index) return;
+      _pages.animateToPage(
+        next.index,
+        duration: AppMotion.of(context, AppMotion.normal),
+        curve: AppMotion.standard,
+      );
+    });
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      appBar: AppTopBar(
-        title: Text(
-          AppConstants.appName.toLowerCase(),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-            letterSpacing: -0.35,
-          ),
-        ),
+      appBar: const AppTopBar(),
+      body: PageView(
+        controller: _pages,
+        onPageChanged: _onPageChanged,
+        children: [
+          const TasksPane(),
+          activeId == null
+              ? _AgentHome(onSend: _startChat)
+              : ChatScreen(key: ValueKey(activeId), conversationId: activeId),
+        ],
       ),
-      body: SafeArea(
-        top: false,
-        bottom: true,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              padding: EdgeInsets.fromLTRB(
-                0,
-                compact ? AppSpacing.md : AppSpacing.lg,
-                0,
-                gap + bottomInset,
-              ),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight -
-                      (compact ? AppSpacing.lg : AppSpacing.xxl),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0, end: 1),
-                      duration: AppMotion.of(context, AppMotion.emphasis),
-                      curve: AppMotion.standard,
-                      builder: (context, value, child) {
-                        return Opacity(
-                          opacity: value,
-                          child: Transform.translate(
-                            offset: Offset(0, (1 - value) * 10),
-                            child: child,
-                          ),
-                        );
-                      },
-                      child: Padding(
+    );
+  }
+}
+
+class _AgentHome extends StatelessWidget {
+  const _AgentHome({required this.onSend});
+
+  final ValueChanged<String> onSend;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final pagePad = AppBreakpoints.pagePadding(context);
+
+    return Column(
+      children: [
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight - AppSpacing.xxl,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Padding(
                         padding: EdgeInsets.symmetric(horizontal: pagePad + 8),
-                        child: Text(
-                          AppConstants.homeHeadline,
+                        child: TypingHeadline(
+                          text: AppConstants.homeHeadline,
                           style: AppBreakpoints.headlineStyle(context, theme),
-                          textAlign: TextAlign.center,
                         ),
                       ),
-                    ),
-                    SizedBox(height: gap),
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0, end: 1),
-                      duration: AppMotion.of(context, AppMotion.emphasis),
-                      curve: AppMotion.standard,
-                      builder: (context, value, child) {
-                        return Opacity(
-                          opacity: value,
-                          child: Transform.translate(
-                            offset: Offset(0, (1 - value) * 12),
-                            child: child,
-                          ),
-                        );
-                      },
-                      child: ChatComposer(
-                        placement: ComposerPlacement.hero,
-                        hintText: AppConstants.composerHint,
-                        onSend: (text) => _startChat(ref, text),
-                      ),
-                    ),
-                    SizedBox(height: compact ? AppSpacing.md : AppSpacing.lg),
-                    if (showMockChips)
-                      MockScenarioPicker(
-                        onSelected: (scenario) =>
-                            _startChat(ref, scenario.label),
-                      )
-                    else
-                      SuggestionChips(
-                        suggestions: AppConstants.homeSuggestions,
-                        onSelected: (value) => _startChat(ref, value),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
-      ),
+        ChatComposer(onSend: onSend),
+      ],
     );
   }
 }
