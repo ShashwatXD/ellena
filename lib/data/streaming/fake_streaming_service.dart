@@ -1,42 +1,51 @@
 import '../../core/constants/app_constants.dart';
 import '../../core/models/mock_stream_scenario.dart';
+import 'stream_event.dart';
 import 'streaming_service.dart';
 
 class FakeStreamingService implements StreamingService {
   FakeStreamingService({required this.scenarioOf});
 
   final MockStreamScenario Function() scenarioOf;
-  int _epoch = 0;
+  int _generation = 0;
 
   @override
-  Stream<String> streamReply({
+  int beginGeneration() => ++_generation;
+
+  @override
+  Stream<StreamEvent> streamReply({
     required String prompt,
     required String model,
     List<({String role, String text})> history = const [],
   }) async* {
-    final epoch = ++_epoch;
+    final generation = _generation;
     final scenario = scenarioOf();
     final chunks = scenario.chunks;
     final delay = scenario.chunkDelay;
     final failAfter = scenario.failAfterYields;
-
+    var seqCursor = StreamCursor(generation);
     var yielded = 0;
-    while (true) {
-      if (epoch != _epoch) return;
+
+    bool alive() => generation == _generation;
+
+    while (alive()) {
       if (failAfter != null && yielded >= failAfter) {
         await Future<void>.delayed(delay);
-        if (epoch != _epoch) return;
+        if (!alive()) return;
         throw StateError(AppConstants.mockStreamFailed);
       }
-      if (yielded >= chunks.length) return;
+      if (yielded >= chunks.length) {
+        yield seqCursor.meta(StreamEvent.finishReasonKey, 'STOP');
+        return;
+      }
       await Future<void>.delayed(delay);
-      if (epoch != _epoch) return;
-      yield chunks[yielded++];
+      if (!alive()) return;
+      yield seqCursor.text(chunks[yielded++]);
     }
   }
 
   @override
   Future<void> cancel() async {
-    _epoch++;
+    _generation++;
   }
 }

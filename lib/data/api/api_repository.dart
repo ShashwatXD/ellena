@@ -11,16 +11,12 @@ class ApiRepository {
 
   Future<Result<Response<ResponseBody>>> streamGeminiGenerateContent({
     required String model,
-    required String apiKey,
     required Map<String, dynamic> body,
     CancelToken? cancelToken,
   }) {
     return _api.post<ResponseBody>(
       ApiRoutes.geminiStreamGenerateContent(model),
-      queryParameters: {
-        'alt': 'sse',
-        'key': apiKey,
-      },
+      queryParameters: const {'alt': 'sse'},
       data: body,
       options: Options(
         responseType: ResponseType.stream,
@@ -36,13 +32,11 @@ class ApiRepository {
 
   Future<Result<Response<Map<String, dynamic>>>> generateGeminiContent({
     required String model,
-    required String apiKey,
     required Map<String, dynamic> body,
     CancelToken? cancelToken,
   }) {
     return _api.post<Map<String, dynamic>>(
       ApiRoutes.geminiGenerateContent(model),
-      queryParameters: {'key': apiKey},
       data: body,
       options: Options(
         headers: const {

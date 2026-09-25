@@ -9,16 +9,8 @@ class _AssistantActions extends StatelessWidget {
   final String content;
   final bool showSuccess;
 
-  Future<void> _copy(BuildContext context) async {
-    await Clipboard.setData(ClipboardData(text: content));
-    if (!context.mounted) return;
-    HapticFeedback.selectionClick();
-    AppSnackBar.show(
-      context,
-      message: AppConstants.copiedLabel,
-      icon: Icons.check_rounded,
-    );
-  }
+  Future<void> _copy(BuildContext context) =>
+      ClipboardCopy.copy(context, content);
 
   @override
   Widget build(BuildContext context) {

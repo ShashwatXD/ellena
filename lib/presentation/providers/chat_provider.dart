@@ -8,6 +8,8 @@ import '../../core/models/message.dart';
 import '../../core/models/message_status.dart';
 import '../../data/api/api_exception.dart';
 import '../../data/storage/chat_storage.dart';
+import '../../data/streaming/message_stream.dart';
+import '../../data/streaming/stream_event.dart';
 import '../../data/streaming/streaming_service.dart';
 import 'chat_state.dart';
 import 'data_providers.dart';
@@ -17,8 +19,10 @@ import 'model_provider.dart';
 final chatProvider = NotifierProvider<ChatNotifier, ChatState>(ChatNotifier.new);
 
 class ChatNotifier extends Notifier<ChatState> {
-  final Map<String, StreamSubscription<String>> _subscriptions = {};
-  final Set<String> _activeMessageIds = {};
+  static const _streamPersistGap = Duration(milliseconds: 400);
+
+  final Map<String, MessageStream> _streams = {};
+  final Map<String, Timer> _persistDebounce = {};
   final Set<String> _titleRequestedIds = {};
   StreamingService? _liveService;
 
@@ -27,11 +31,17 @@ class ChatNotifier extends Notifier<ChatState> {
   @override
   ChatState build() {
     ref.onDispose(() {
-      for (final subscription in _subscriptions.values) {
-        unawaited(subscription.cancel());
+      final service = _liveService;
+      _liveService = null;
+      unawaited(service?.cancel());
+      for (final stream in _streams.values) {
+        unawaited(stream.cancel());
       }
-      _subscriptions.clear();
-      _activeMessageIds.clear();
+      for (final timer in _persistDebounce.values) {
+        timer.cancel();
+      }
+      _streams.clear();
+      _persistDebounce.clear();
     });
 
     final loaded = _storage.load();
@@ -53,6 +63,19 @@ class ChatNotifier extends Notifier<ChatState> {
       conversationId,
       state.messagesFor(conversationId),
     );
+  }
+
+  void _scheduleStreamPersist(String conversationId) {
+    _persistDebounce[conversationId]?.cancel();
+    _persistDebounce[conversationId] = Timer(_streamPersistGap, () {
+      _persistDebounce.remove(conversationId);
+      unawaited(_persistConversation(conversationId));
+    });
+  }
+
+  Future<void> _flushPersist(String conversationId) async {
+    _persistDebounce.remove(conversationId)?.cancel();
+    await _persistConversation(conversationId);
   }
 
   String startConversation(String firstMessage) {
@@ -92,7 +115,7 @@ class ChatNotifier extends Notifier<ChatState> {
       },
       activeConversationId: conversationId,
     );
-    unawaited(_persistConversation(conversationId));
+    unawaited(_flushPersist(conversationId));
 
     unawaited(
       _beginStream(
@@ -145,7 +168,7 @@ class ChatNotifier extends Notifier<ChatState> {
         conversationId: [...existing, userMessage, assistantMessage],
       },
     );
-    unawaited(_persistConversation(conversationId));
+    unawaited(_flushPersist(conversationId));
 
     unawaited(
       _beginStream(
@@ -166,11 +189,10 @@ class ChatNotifier extends Notifier<ChatState> {
     if (index < 0) return;
 
     final messageId = messages[index].id;
-    _activeMessageIds.remove(messageId);
+    final stream = _streams.remove(messageId);
 
     await _liveService?.cancel();
-    final subscription = _subscriptions.remove(messageId);
-    await subscription?.cancel();
+    await stream?.cancel();
 
     messages[index] = messages[index].copyWith(
       status: MessageStatus.stopped,
@@ -185,7 +207,7 @@ class ChatNotifier extends Notifier<ChatState> {
         conversationId: messages,
       },
     );
-    unawaited(_persistConversation(conversationId));
+    unawaited(_flushPersist(conversationId));
   }
 
   bool isStreaming(String conversationId) {
@@ -199,11 +221,14 @@ class ChatNotifier extends Notifier<ChatState> {
   Future<void> deleteAllChats() async {
     await _liveService?.cancel();
     _liveService = null;
-    for (final subscription in _subscriptions.values) {
-      await subscription.cancel();
+    for (final stream in _streams.values) {
+      await stream.cancel();
     }
-    _subscriptions.clear();
-    _activeMessageIds.clear();
+    for (final timer in _persistDebounce.values) {
+      timer.cancel();
+    }
+    _streams.clear();
+    _persistDebounce.clear();
     await _storage.clear();
     state = const ChatState();
   }
@@ -252,13 +277,16 @@ class ChatNotifier extends Notifier<ChatState> {
   }
 
   Future<void> deleteConversation(String conversationId) async {
+    _persistDebounce.remove(conversationId)?.cancel();
     final messages = state.messagesFor(conversationId);
+    var streaming = false;
     for (final message in messages) {
-      if (message.status == MessageStatus.streaming) {
-        _activeMessageIds.remove(message.id);
-        await _subscriptions.remove(message.id)?.cancel();
-      }
+      if (message.status != MessageStatus.streaming) continue;
+      streaming = true;
+      final stream = _streams.remove(message.id);
+      await stream?.cancel();
     }
+    if (streaming) await _liveService?.cancel();
 
     final conversations =
         state.conversations.where((c) => c.id != conversationId).toList();
@@ -306,7 +334,7 @@ class ChatNotifier extends Notifier<ChatState> {
         conversationId: messages,
       },
     );
-    unawaited(_persistConversation(conversationId));
+    unawaited(_flushPersist(conversationId));
 
     unawaited(
       _beginStream(
@@ -322,11 +350,6 @@ class ChatNotifier extends Notifier<ChatState> {
     required String messageId,
     required String prompt,
   }) async {
-    _activeMessageIds.add(messageId);
-
-    // Prior turns for Gemini multi-turn: complete/stopped messages with text,
-    // excluding the live assistant placeholder. The latest user text is passed
-    // separately as [prompt] (same pattern as the REST multi-turn examples).
     final history = <({String role, String text})>[];
     for (final message in state.messagesFor(conversationId)) {
       if (message.id == messageId) continue;
@@ -346,36 +369,69 @@ class ChatNotifier extends Notifier<ChatState> {
 
     final service = ref.read(streamingServiceProvider);
     _liveService = service;
-
     final model = ref.read(selectedModelProvider).id;
 
+    await _streams.remove(messageId)?.cancel();
+    final generation = service.beginGeneration();
+    final live = MessageStream(generation);
+    _streams[messageId] = live;
+
     try {
-      final subscription = service
+      live.subscription = service
           .streamReply(prompt: prompt, model: model, history: history)
           .listen(
-        (chunk) {
-          if (!_activeMessageIds.contains(messageId)) return;
-          _appendChunk(conversationId, messageId, chunk);
-        },
+        (event) => _onStreamEvent(conversationId, messageId, event),
         onError: (Object error, StackTrace stackTrace) {
-          if (!_activeMessageIds.contains(messageId)) return;
+          if (!_owns(messageId, generation)) return;
           unawaited(_failStream(conversationId, messageId, error));
         },
         onDone: () {
-          if (!_activeMessageIds.contains(messageId)) return;
+          if (!_owns(messageId, generation)) return;
           unawaited(_completeStream(conversationId, messageId));
         },
         cancelOnError: true,
       );
-      _subscriptions[messageId] = subscription;
     } catch (error) {
-      if (!_activeMessageIds.contains(messageId)) return;
+      if (!_owns(messageId, generation)) return;
       await _failStream(conversationId, messageId, error);
     }
   }
 
+  bool _owns(String messageId, int generation) =>
+      _streams[messageId]?.generation == generation;
+
+  void _onStreamEvent(
+    String conversationId,
+    String messageId,
+    StreamEvent event,
+  ) {
+    final live = _streams[messageId];
+    if (live == null || !live.accept(event)) return;
+
+    if (event.isText) {
+      final text = event.text;
+      if (text == null || text.isEmpty) return;
+      _appendChunk(conversationId, messageId, text);
+      return;
+    }
+
+    if (!event.isContentPolicy) return;
+    final value = event.metaValue;
+    if (value == null || value.isEmpty) return;
+    final current = state.messagesFor(conversationId);
+    final index = current.indexWhere((m) => m.id == messageId);
+    if (index < 0 || current[index].content.isNotEmpty) return;
+    unawaited(
+      _failStream(
+        conversationId,
+        messageId,
+        ApiException.contentPolicy(reason: value),
+      ),
+    );
+  }
+
   void _appendChunk(String conversationId, String messageId, String chunk) {
-    if (!_activeMessageIds.contains(messageId)) return;
+    if (!_streams.containsKey(messageId)) return;
 
     final messages = [...state.messagesFor(conversationId)];
     final index = messages.indexWhere((m) => m.id == messageId);
@@ -391,14 +447,11 @@ class ChatNotifier extends Notifier<ChatState> {
         conversationId: messages,
       },
     );
-    unawaited(
-      _storage.saveMessages(conversationId, messages),
-    );
+    _scheduleStreamPersist(conversationId);
   }
 
   Future<void> _completeStream(String conversationId, String messageId) async {
-    _activeMessageIds.remove(messageId);
-    _subscriptions.remove(messageId);
+    _streams.remove(messageId);
 
     final messages = [...state.messagesFor(conversationId)];
     final index = messages.indexWhere((m) => m.id == messageId);
@@ -421,7 +474,7 @@ class ChatNotifier extends Notifier<ChatState> {
         conversationId: messages,
       },
     );
-    unawaited(_persistConversation(conversationId));
+    unawaited(_flushPersist(conversationId));
   }
 
   Future<void> _maybeGenerateTitle(
@@ -448,8 +501,7 @@ class ChatNotifier extends Notifier<ChatState> {
     String messageId,
     Object error,
   ) async {
-    _activeMessageIds.remove(messageId);
-    _subscriptions.remove(messageId);
+    _streams.remove(messageId);
 
     final messages = [...state.messagesFor(conversationId)];
     final index = messages.indexWhere((m) => m.id == messageId);
@@ -471,7 +523,7 @@ class ChatNotifier extends Notifier<ChatState> {
         conversationId: messages,
       },
     );
-    unawaited(_persistConversation(conversationId));
+    unawaited(_flushPersist(conversationId));
   }
 
   String _titleFrom(String text) {

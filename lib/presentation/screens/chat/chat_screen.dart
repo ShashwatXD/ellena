@@ -3,14 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_constants.dart';
-import '../../../core/models/message_status.dart';
 import '../../providers/providers.dart';
 import '../../theme/app_breakpoints.dart';
 import '../../theme/app_motion.dart';
 import '../../theme/app_spacing.dart';
-import '../../common_widgets/chat_composer/chat_composer.dart';
 import '../../common_widgets/app_top_bar.dart';
 import '../../common_widgets/message_bubble/message_bubble.dart';
+import 'widgets/chat_composer_slot.dart';
+import 'widgets/chat_title.dart';
 import 'widgets/jump_to_bottom_button.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
@@ -72,14 +72,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final chat = ref.watch(chatProvider);
-    final conversation = chat.conversationById(widget.conversationId);
-    final messages = chat.messagesFor(widget.conversationId);
-    final streaming = messages.any(
-      (m) =>
-          m.role == MessageRole.assistant &&
-          m.status == MessageStatus.streaming,
+    final messageIds = ref.watch(
+      chatProvider.select(
+        (state) => state
+            .messagesFor(widget.conversationId)
+            .map((m) => m.id)
+            .toList(growable: false),
+      ),
     );
     final pagePad = AppBreakpoints.pagePadding(context);
 
@@ -97,17 +96,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return Scaffold(
       resizeToAvoidBottomInset: true,
       appBar: AppTopBar(
-        title: Text(
-          conversation?.title ?? AppConstants.chatFallbackTitle,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.titleMedium,
-        ),
+        title: ChatTitle(conversationId: widget.conversationId),
       ),
       body: Column(
         children: [
           Expanded(
-            child: messages.isEmpty
+            child: messageIds.isEmpty
                 ? SafeArea(
                     top: false,
                     child: Center(
@@ -116,9 +110,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         child: Text(
                           AppConstants.noMessages,
                           textAlign: TextAlign.center,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                              ),
                         ),
                       ),
                     ),
@@ -136,11 +135,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           pagePad,
                           AppSpacing.lg,
                         ),
-                        itemCount: messages.length,
+                        itemCount: messageIds.length,
                         separatorBuilder: (context, index) =>
                             const SizedBox(height: AppSpacing.md),
                         itemBuilder: (context, index) {
-                          return MessageBubble(message: messages[index]);
+                          final id = messageIds[index];
+                          return MessageBubble(
+                            key: ValueKey(id),
+                            conversationId: widget.conversationId,
+                            messageId: id,
+                          );
                         },
                       ),
                       Positioned(
@@ -157,20 +161,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     ],
                   ),
           ),
-          ChatComposer(
-            isStreaming: streaming,
-            hintText: AppConstants.composerHint,
-            onSend: (text) {
-              ref
-                  .read(chatProvider.notifier)
-                  .sendMessage(widget.conversationId, text);
-            },
-            onStop: () {
-              ref
-                  .read(chatProvider.notifier)
-                  .stopStreaming(widget.conversationId);
-            },
-          ),
+          ChatComposerSlot(conversationId: widget.conversationId),
         ],
       ),
     );

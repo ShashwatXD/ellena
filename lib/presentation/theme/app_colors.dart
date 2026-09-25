@@ -25,4 +25,10 @@ abstract final class AppColors {
   static const Color onDark = Color(0xFFF5F4F1);
   static const Color lineDark = Color(0xFF34322E);
   static const Color mistDark = Color(0xFF1A1917);
+
+  /// Fenced code chrome stays dark in light and dark app themes.
+  static const Color codeSurface = surfaceElevatedDark;
+  static const Color codeOnSurface = onDark;
+  static const Color codeMuted = Color(0xFFA8A49C);
+  static const Color codeLine = lineDark;
 }

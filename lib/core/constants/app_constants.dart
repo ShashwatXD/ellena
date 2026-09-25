@@ -40,8 +40,10 @@ abstract final class AppConstants {
   static const String knowMoreLabel = 'Know more';
   static const String showLessLabel = 'Show less';
   static const String copiedLabel = 'Copied';
+  static const String copyTooltip = 'Copy';
   static const String geminiRequestFailed = 'Request failed';
   static const String rateLimitReached = 'Rate limit reached';
+  static const String contentPolicyBlocked = 'Blocked by content policy';
   static const String authenticationFailed = 'Authentication failed';
   static const String invalidRequest = 'Invalid request';
   static const String modelNotFound = 'Model not found';

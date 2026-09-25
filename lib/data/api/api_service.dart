@@ -1,12 +1,13 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 
 import '../../core/result/result.dart';
 import 'api_exception.dart';
+import 'api_interceptor.dart';
 
 class ApiService {
   ApiService({
     required String baseUrl,
+    required String apiKey,
     Dio? dio,
   }) : _dio = dio ??
             Dio(
@@ -19,7 +20,12 @@ class ApiService {
                   'Accept': 'application/json',
                 },
               ),
-            );
+            ) {
+    _dio.interceptors.addAll([
+      ApiKeyInterceptor(apiKey),
+      ApiErrorInterceptor(),
+    ]);
+  }
 
   final Dio _dio;
 
@@ -29,13 +35,12 @@ class ApiService {
     Options? options,
     CancelToken? cancelToken,
   }) {
-    return _guard(
-      () => _dio.get<T>(
-        path,
-        queryParameters: queryParameters,
-        options: options,
-        cancelToken: cancelToken,
-      ),
+    return _send(
+      method: 'GET',
+      path: path,
+      queryParameters: queryParameters,
+      options: options,
+      cancelToken: cancelToken,
     );
   }
 
@@ -46,67 +51,31 @@ class ApiService {
     Options? options,
     CancelToken? cancelToken,
   }) {
-    return _guard(
-      () => _dio.post<T>(
-        path,
-        data: data,
-        queryParameters: queryParameters,
-        options: options,
-        cancelToken: cancelToken,
-      ),
+    return _send(
+      method: 'POST',
+      path: path,
+      data: data,
+      queryParameters: queryParameters,
+      options: options,
+      cancelToken: cancelToken,
     );
   }
 
-  Future<Result<Response<T>>> put<T>(
-    String path, {
+  Future<Result<Response<T>>> _send<T>({
+    required String method,
+    required String path,
     Object? data,
     Map<String, dynamic>? queryParameters,
     Options? options,
     CancelToken? cancelToken,
   }) {
     return _guard(
-      () => _dio.put<T>(
+      () => _dio.request<T>(
         path,
         data: data,
         queryParameters: queryParameters,
-        options: options,
         cancelToken: cancelToken,
-      ),
-    );
-  }
-
-  Future<Result<Response<T>>> patch<T>(
-    String path, {
-    Object? data,
-    Map<String, dynamic>? queryParameters,
-    Options? options,
-    CancelToken? cancelToken,
-  }) {
-    return _guard(
-      () => _dio.patch<T>(
-        path,
-        data: data,
-        queryParameters: queryParameters,
-        options: options,
-        cancelToken: cancelToken,
-      ),
-    );
-  }
-
-  Future<Result<Response<T>>> delete<T>(
-    String path, {
-    Object? data,
-    Map<String, dynamic>? queryParameters,
-    Options? options,
-    CancelToken? cancelToken,
-  }) {
-    return _guard(
-      () => _dio.delete<T>(
-        path,
-        data: data,
-        queryParameters: queryParameters,
-        options: options,
-        cancelToken: cancelToken,
+        options: (options ?? Options()).copyWith(method: method),
       ),
     );
   }
@@ -117,22 +86,9 @@ class ApiService {
     try {
       return Success(await request());
     } on DioException catch (error, stackTrace) {
-      final exception = ApiException.fromDio(error);
-      debugPrint(
-        'API ✕ ${error.requestOptions.method} '
-        '${_redactUri(error.requestOptions.uri)} → $exception',
-      );
-      return Failure(exception, stackTrace);
+      return Failure(ApiException.fromDio(error), stackTrace);
     } catch (error, stackTrace) {
-      debugPrint('API ✕ $error');
       return Failure(error, stackTrace);
     }
-  }
-
-  static String _redactUri(Uri uri) {
-    if (!uri.queryParameters.containsKey('key')) return uri.toString();
-    final params = Map<String, String>.from(uri.queryParameters)
-      ..['key'] = '***';
-    return uri.replace(queryParameters: params).toString();
   }
 }

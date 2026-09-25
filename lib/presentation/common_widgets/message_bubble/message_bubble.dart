@@ -8,11 +8,12 @@ import '../../../core/models/message.dart';
 import '../../../core/models/message_status.dart';
 import '../../providers/providers.dart';
 import '../../theme/app_breakpoints.dart';
+import '../../theme/app_colors.dart';
 import '../../theme/app_motion.dart';
 import '../../theme/app_radii.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
-import '../app_snack_bar.dart';
+import '../clipboard_copy.dart';
 
 part 'user_bubble.dart';
 part 'assistant_bubble.dart';
@@ -24,24 +25,42 @@ part 'streaming_caret.dart';
 part 'status_chip.dart';
 
 class MessageBubble extends ConsumerWidget {
-  const MessageBubble({super.key, required this.message});
+  const MessageBubble({
+    super.key,
+    required this.conversationId,
+    required this.messageId,
+  });
 
-  final Message message;
+  final String conversationId;
+  final String messageId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final message = ref.watch(
+      chatProvider.select((state) {
+        for (final item in state.messagesFor(conversationId)) {
+          if (item.id == messageId) return item;
+        }
+        return null;
+      }),
+    );
+    if (message == null) return const SizedBox.shrink();
+
+    final canRetry = ref.watch(
+      chatProvider.select((state) {
+        final messages = state.messagesFor(conversationId);
+        if (messages.isEmpty) return false;
+        final last = messages.last;
+        return last.id == messageId && last.status == MessageStatus.failed;
+      }),
+    );
+
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final isUser = message.role == MessageRole.user;
     final maxWidth = MediaQuery.sizeOf(context).width *
         AppBreakpoints.messageMaxFraction(isUser: isUser);
     final motion = AppMotion.of(context, AppMotion.normal);
-
-    final messages =
-        ref.watch(chatProvider).messagesFor(message.conversationId);
-    final canRetry = message.status == MessageStatus.failed &&
-        messages.isNotEmpty &&
-        messages.last.id == message.id;
 
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
@@ -72,8 +91,8 @@ class MessageBubble extends ConsumerWidget {
                   ? () {
                       HapticFeedback.lightImpact();
                       ref.read(chatProvider.notifier).retryMessage(
-                            message.conversationId,
-                            message.id,
+                            conversationId,
+                            messageId,
                           );
                     }
                   : null,

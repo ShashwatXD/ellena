@@ -1,7 +1,7 @@
 import '../../core/constants/app_constants.dart';
 import '../../core/models/llm_model.dart';
 import '../api/api_repository.dart';
-import 'gemini_response_text.dart';
+import 'gemini_response.dart';
 
 class GeminiTitleService {
   GeminiTitleService({
@@ -31,7 +31,6 @@ class GeminiTitleService {
 
     final result = await _repository.generateGeminiContent(
       model: GeminiModels.flashLite.id,
-      apiKey: apiKey,
       body: {
         'contents': [
           {
@@ -64,7 +63,7 @@ class GeminiTitleService {
 
   String? _parseTitle(Map<String, dynamic>? data) {
     if (data == null) return null;
-    final raw = GeminiResponseText.fromResponse(data);
+    final raw = GeminiResponse.parse(data).text;
     if (raw == null) return null;
 
     var title = _stripEdgeQuotes(

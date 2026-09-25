@@ -20,7 +20,10 @@ final chatStorageProvider = Provider<ChatStorage>((ref) {
 
 final apiServiceProvider = Provider<ApiService>((ref) {
   final config = ref.watch(appConfigProvider);
-  return ApiService(baseUrl: config.apiBaseUrl);
+  return ApiService(
+    baseUrl: config.apiBaseUrl,
+    apiKey: config.geminiApiKey,
+  );
 });
 
 final apiRepositoryProvider = Provider<ApiRepository>((ref) {
@@ -28,10 +31,8 @@ final apiRepositoryProvider = Provider<ApiRepository>((ref) {
 });
 
 final geminiStreamingProvider = Provider<GeminiStreamingService>((ref) {
-  final config = ref.watch(appConfigProvider);
   return GeminiStreamingService(
     repository: ref.watch(apiRepositoryProvider),
-    apiKey: config.geminiApiKey,
   );
 });
 

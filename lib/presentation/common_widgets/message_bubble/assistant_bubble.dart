@@ -22,7 +22,7 @@ class _AssistantBubble extends StatelessWidget {
     final complete = message.status == MessageStatus.complete;
     final stopped = message.status == MessageStatus.stopped;
     final empty = message.content.isEmpty;
-    final codeStyle = AppTypography.codeStyle(colors.onSurface);
+    final inlineCodeStyle = AppTypography.codeStyle(colors.onSurface);
 
     return Align(
       alignment: Alignment.centerLeft,
@@ -69,15 +69,10 @@ class _AssistantBubble extends StatelessWidget {
                 styleSheet: theme.textTheme.bodyLarge?.copyWith(height: 1.6),
                 padding: EdgeInsets.zero,
                 codeBuilder: (context, name, code, closed) =>
-                    _MarkdownCodeBlock(
-                  name: name,
-                  code: code,
-                  style: codeStyle,
-                  colors: colors,
-                ),
+                    _MarkdownCodeBlock(name: name, code: code),
                 highlightBuilder: (context, text, style) => Text(
                   text,
-                  style: codeStyle.copyWith(
+                  style: inlineCodeStyle.copyWith(
                     backgroundColor:
                         colors.surfaceContainerHighest.withValues(alpha: 0.7),
                   ),

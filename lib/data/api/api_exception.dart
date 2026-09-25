@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../streaming/gemini_response.dart';
 
 class ApiException implements Exception {
   const ApiException({
@@ -14,19 +15,13 @@ class ApiException implements Exception {
   });
 
   final String message;
-
   final String? detail;
-
   final int? statusCode;
   final DioExceptionType? type;
   final bool isCancel;
 
   factory ApiException.fromDio(DioException error) {
-    final status = error.response?.statusCode;
-    final isCancel = error.type == DioExceptionType.cancel;
-    final apiMessage = _readApiMessage(error.response?.data);
-
-    if (isCancel) {
+    if (error.type == DioExceptionType.cancel) {
       return const ApiException(
         message: AppConstants.stoppedLabel,
         isCancel: true,
@@ -34,27 +29,30 @@ class ApiException implements Exception {
       );
     }
 
+    final status = error.response?.statusCode;
+    final body = _GeminiBody.read(error.response?.data);
+    final policy = body.isContentPolicy;
     final message = switch (error.type) {
       DioExceptionType.connectionTimeout ||
       DioExceptionType.sendTimeout ||
       DioExceptionType.receiveTimeout =>
         AppConstants.requestTimedOut,
       DioExceptionType.connectionError => AppConstants.connectionFailed,
-      DioExceptionType.badResponse => _titleForStatus(status),
-      _ => apiMessage?.isNotEmpty == true
-          ? _shorten(apiMessage!, 72)
+      DioExceptionType.badResponse =>
+        policy ? AppConstants.contentPolicyBlocked : _titleForStatus(status),
+      _ => policy
+          ? AppConstants.contentPolicyBlocked
           : AppConstants.geminiRequestFailed,
     };
 
     return ApiException(
       message: message,
-      detail: _detailFor(status: status, apiMessage: apiMessage),
+      detail: body.detail(status),
       statusCode: status,
       type: error.type,
     );
   }
 
-  /// Maps any thrown object into a UI-safe exception (no stack dumps).
   factory ApiException.fromObject(Object error) {
     if (error is ApiException) return error;
     if (error is DioException) return ApiException.fromDio(error);
@@ -67,6 +65,14 @@ class ApiException implements Exception {
     return ApiException(
       message: AppConstants.genericError,
       detail: _shorten(error.toString().split('\n').first, 240),
+    );
+  }
+
+  factory ApiException.contentPolicy({String? reason}) {
+    final clean = reason?.trim();
+    return ApiException(
+      message: AppConstants.contentPolicyBlocked,
+      detail: clean == null || clean.isEmpty ? null : 'Blocked: $clean',
     );
   }
 
@@ -84,74 +90,114 @@ class ApiException implements Exception {
     };
   }
 
-  static String? _detailFor({
-    required int? status,
-    required String? apiMessage,
-  }) {
-    final parts = <String>[];
-    if (status != null) parts.add('HTTP $status');
-    final clean = _cleanApiMessage(apiMessage);
-    if (clean != null) parts.add(clean);
-    if (parts.isEmpty) return null;
-    return parts.join('\n');
-  }
-
-  /// Prefer Gemini's short `error.message`; drop HTML / huge Dio dumps.
-  static String? _cleanApiMessage(String? raw) {
-    if (raw == null) return null;
-    var text = raw.trim();
-    if (text.isEmpty) return null;
-    if (text.startsWith('<') || text.toLowerCase().contains('<!doctype')) {
-      return null;
-    }
-    // Dio often embeds "This exception was thrown because..." — ignore that.
-    if (text.contains('This exception was thrown because')) {
-      return null;
-    }
-    text = text.replaceAll(RegExp(r'\s+'), ' ');
-    return _shorten(text, 280);
-  }
-
   static String _shorten(String text, int max) {
     final cleaned = text.trim().replaceAll(RegExp(r'\s+'), ' ');
     if (cleaned.length <= max) return cleaned;
     return '${cleaned.substring(0, max).trimRight()}…';
   }
 
-  static String? _readApiMessage(Object? data) {
+  @override
+  String toString() =>
+      'ApiException($message, statusCode: $statusCode, type: $type)';
+}
+
+class _GeminiBody {
+  const _GeminiBody({this.message, this.status, this.map});
+
+  final String? message;
+  final String? status;
+  final Map<String, dynamic>? map;
+
+  bool get isContentPolicy {
+    final json = map;
+    if (json != null) {
+      if (GeminiResponse.parse(json).policyReason != null) return true;
+      if (_detailReasonBlocked(json)) return true;
+    }
+    if (status != null && GeminiResponse.isBlockedFinish(status!)) {
+      return true;
+    }
+    return _messageBlocked(message);
+  }
+
+  String? detail(int? httpStatus) {
+    final parts = <String>[];
+    if (httpStatus != null) parts.add('HTTP $httpStatus');
+    if (status != null && status!.isNotEmpty) parts.add(status!);
+    final clean = _clean(message);
+    if (clean != null) parts.add(clean);
+    if (parts.isEmpty) return null;
+    return parts.join('\n');
+  }
+
+  static _GeminiBody read(Object? data) {
     final map = _asMap(data);
     if (map == null) {
-      if (data is String && data.trim().isNotEmpty) {
-        return data.trim();
-      }
-      return null;
+      final text = data is String ? data.trim() : '';
+      return _GeminiBody(message: text.isEmpty ? null : text);
     }
     final error = map['error'];
+    String? message;
+    String? status;
     if (error is Map) {
-      final message = error['message'];
-      if (message is String && message.trim().isNotEmpty) return message.trim();
+      message = _string(error['message']);
+      status = _string(error['status']);
     }
-    final message = map['message'];
-    if (message is String && message.trim().isNotEmpty) return message.trim();
-    return null;
+    message ??= _string(map['message']);
+    return _GeminiBody(message: message, status: status, map: map);
+  }
+
+  static bool _detailReasonBlocked(Map<String, dynamic> json) {
+    final error = json['error'];
+    if (error is! Map) return false;
+    final details = error['details'];
+    if (details is! List) return false;
+    for (final item in details) {
+      if (item is! Map) continue;
+      final reason = _string(item['reason']);
+      if (reason != null && GeminiResponse.isBlockedFinish(reason)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static bool _messageBlocked(String? raw) {
+    if (raw == null || raw.isEmpty) return false;
+    final text = raw.toLowerCase();
+    return text.contains('safety') ||
+        text.contains('prohibited') ||
+        text.contains('content policy') ||
+        text.contains('recitation');
+  }
+
+  static String? _clean(String? raw) {
+    if (raw == null) return null;
+    final text = raw.trim();
+    if (text.isEmpty) return null;
+    final lower = text.toLowerCase();
+    if (lower.startsWith('<') || lower.contains('<!doctype')) return null;
+    if (text.contains('This exception was thrown because')) return null;
+    return ApiException._shorten(text, 280);
+  }
+
+  static String? _string(Object? value) {
+    if (value is! String) return null;
+    final text = value.trim();
+    return text.isEmpty ? null : text;
   }
 
   static Map<String, dynamic>? _asMap(Object? data) {
     if (data is Map<String, dynamic>) return data;
     if (data is Map) return Map<String, dynamic>.from(data);
-    if (data is String && data.trim().isNotEmpty) {
-      try {
-        final decoded = jsonDecode(data);
-        if (decoded is Map<String, dynamic>) return decoded;
-        if (decoded is Map) return Map<String, dynamic>.from(decoded);
-      } on FormatException {
-        return null;
-      }
+    if (data is! String || data.trim().isEmpty) return null;
+    try {
+      final decoded = jsonDecode(data);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    } on FormatException {
+      return null;
     }
     return null;
   }
-
-  @override
-  String toString() =>
-      'ApiException($message, statusCode: $statusCode, type: $type)';
 }
