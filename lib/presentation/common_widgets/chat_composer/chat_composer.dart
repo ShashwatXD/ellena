@@ -1,9 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:speech_to_text/speech_recognition_result.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/result/result.dart';
 import '../../../core/models/agent_skill.dart';
 import '../../navigation/app_routes.dart';
 import '../../providers/providers.dart';
@@ -11,7 +17,9 @@ import '../../theme/app_breakpoints.dart';
 import '../../theme/app_motion.dart';
 import '../../theme/app_radii.dart';
 import '../../theme/app_spacing.dart';
+import '../../utils/speech_dictation.dart';
 import '../add_to_chat_sheet.dart';
+import '../app_snack_bar.dart';
 import '../app_bottom_sheet.dart';
 import '../connectors_sheet.dart';
 import 'composer_attachment_bar.dart';
@@ -21,6 +29,7 @@ import 'skill_picker.dart';
 import 'slash_menu.dart';
 
 part 'composer_round_button.dart';
+part 'composer_dictation_bar.dart';
 
 class ChatComposer extends ConsumerStatefulWidget {
   const ChatComposer({
@@ -48,7 +57,12 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
   final _fieldKey = GlobalKey();
+  final _speech = SpeechToText();
   late final AnimationController _pulse;
+  bool _listening = false;
+  bool _dictationLive = false;
+  String _dictationBase = '';
+  double _speechLevel = 0;
 
   bool get _canSend =>
       widget.enabled &&
@@ -89,6 +103,7 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
 
   @override
   void dispose() {
+    if (_speech.isListening) unawaited(_speech.stop());
     _pulse.dispose();
     _controller.dispose();
     _focusNode.dispose();
@@ -107,6 +122,8 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
 
   void _submit() {
     if (!_canSend) return;
+    if (_listening) unawaited(_speech.stop());
+    _listening = false;
     HapticFeedback.lightImpact();
     _applyExactSlash();
     final quote = ref.read(composerQuoteProvider);
@@ -206,7 +223,8 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
     final expanded = _expanded || attachment != null;
     final slash = _slashQuery;
     final skillsOpen = ref.watch(skillPickerProvider);
-    final showSlash = controlsEnabled &&
+    final showSlash = !_listening &&
+        controlsEnabled &&
         _focusNode.hasFocus &&
         (skillsOpen || slash != null);
 
@@ -225,7 +243,7 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(
-          expanded ? AppRadii.xl : AppRadii.pill,
+          _listening || !expanded ? AppRadii.pill : AppRadii.xl,
         ),
         boxShadow: [
           BoxShadow(
@@ -239,7 +257,12 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
         duration: motion,
         curve: AppMotion.standard,
         alignment: Alignment.bottomCenter,
-        child: expanded
+        child: _listening
+            ? _DictationBar(
+                level: _speechLevel,
+                onDone: _finishDictation,
+              )
+            : expanded
             ? _expandedBody(
                 theme,
                 colors,
@@ -272,7 +295,7 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (attachment != null)
+            if (attachment != null && !_listening)
               ComposerAttachmentBar(
                 attachment: attachment,
                 onClear: () =>
@@ -341,7 +364,7 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
               constraints: const BoxConstraints.tightFor(width: 40, height: 40),
               icon: Icon(Icons.close, size: 18, color: colors.onSurfaceVariant),
             ),
-          const _ComposerGlyph(icon: Icons.mic_none_rounded),
+          _mic(controlsEnabled),
           const SizedBox(width: AppSpacing.xxs),
         ],
       ),
@@ -363,10 +386,13 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (skill != null)
-          ComposerSkillChip(
-            skill: skill,
-            expanded: true,
-            onClear: () => ref.read(selectedSkillProvider.notifier).clear(),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ComposerSkillChip(
+              skill: skill,
+              expanded: true,
+              onClear: () => ref.read(selectedSkillProvider.notifier).clear(),
+            ),
           ),
         if (quote != null)
           ComposerQuoteBar(
@@ -406,7 +432,7 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
                 onPressed: controlsEnabled ? _openConnectors : null,
               ),
               const Spacer(),
-              const _ComposerGlyph(icon: Icons.mic_none_rounded),
+              _mic(controlsEnabled),
               AnimatedSwitcher(
                 duration: motion,
                 switchInCurve: AppMotion.enter,
@@ -456,6 +482,91 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _mic(bool controlsEnabled) {
+    return _ComposerGlyph(
+      icon: Icons.mic_none_rounded,
+      tooltip: AppConstants.dictateTooltip,
+      onPressed: controlsEnabled ? _toggleDictation : null,
+    );
+  }
+
+  Future<void> _toggleDictation() async {
+    if (_listening) return;
+    final allowed = await SpeechDictation.allow(context);
+    if (!allowed || !mounted) return;
+    final ready = await _speech.initialize(
+      onError: (error) {
+        if (!mounted || _speech.isListening) return;
+        setState(() => _listening = false);
+      },
+      onStatus: (status) {
+        if (!mounted || !_dictationLive || _speech.isListening) return;
+        if (status == 'done' || status == 'notListening') _revealDictation();
+      },
+    );
+    if (!ready || !mounted) {
+      if (mounted) {
+        AppSnackBar.show(context, message: AppConstants.speechUnavailable);
+      }
+      return;
+    }
+    _dictationBase = _controller.text;
+    _speechLevel = 0;
+    _focusNode.unfocus();
+    setState(() => _listening = true);
+    final started = await Result.capture(() async {
+      await _speech.listen(
+        onResult: _applyDictation,
+        onSoundLevelChange: _onSpeechLevel,
+        listenOptions: SpeechListenOptions(
+          partialResults: true,
+          listenMode: ListenMode.dictation,
+          cancelOnError: true,
+        ),
+      );
+      return true;
+    });
+    if (!mounted) return;
+    started.when(
+      success: (_) => _dictationLive = true,
+      failure: (error, stackTrace) {
+        _dictationLive = false;
+        setState(() => _listening = false);
+      },
+    );
+  }
+
+  Future<void> _finishDictation() async {
+    HapticFeedback.lightImpact();
+    if (_speech.isListening) await _speech.stop();
+    if (!mounted) return;
+    _revealDictation();
+  }
+
+  void _revealDictation() {
+    _dictationLive = false;
+    setState(() => _listening = false);
+    _focusNode.requestFocus();
+  }
+
+  void _onSpeechLevel(double level) {
+    if (!mounted || !_listening) return;
+    final unit = level < -2 ? (level + 45) / 45 : (level - 1) / 9;
+    setState(() => _speechLevel = unit.clamp(0.0, 1.0));
+  }
+
+  void _applyDictation(SpeechRecognitionResult result) {
+    if (!mounted) return;
+    final words = result.recognizedWords.trim();
+    final base = _dictationBase;
+    final gap = base.isEmpty || base.endsWith(' ') || words.isEmpty ? '' : ' ';
+    final next = words.isEmpty ? base : '$base$gap$words';
+    _controller.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(offset: next.length),
     );
   }
 

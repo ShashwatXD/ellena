@@ -23,6 +23,14 @@ sealed class Result<T> {
       Failure(:final error, :final stackTrace) => failure(error, stackTrace),
     };
   }
+
+  static Future<Result<T>> capture<T>(Future<T> Function() action) async {
+    try {
+      return Success(await action());
+    } catch (error, stackTrace) {
+      return Failure(error, stackTrace);
+    }
+  }
 }
 
 final class Success<T> extends Result<T> {

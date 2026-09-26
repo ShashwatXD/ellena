@@ -28,6 +28,7 @@ class AppConfig {
   static bool get isProd => _instance?.flavor == 'prod';
   static bool get isAndroid =>
       defaultTargetPlatform == TargetPlatform.android;
+  static bool get isIOS => defaultTargetPlatform == TargetPlatform.iOS;
 
   static const String _geminiKeyFromEnv = String.fromEnvironment(
     'GEMINI_API_KEY',

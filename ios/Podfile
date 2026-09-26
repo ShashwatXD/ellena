@@ -44,6 +44,8 @@ post_install do |installer|
       definitions = [definitions] unless definitions.is_a?(Array)
       definitions << 'PERMISSION_CAMERA=1' unless definitions.include?('PERMISSION_CAMERA=1')
       definitions << 'PERMISSION_PHOTOS=1' unless definitions.include?('PERMISSION_PHOTOS=1')
+      definitions << 'PERMISSION_MICROPHONE=1' unless definitions.include?('PERMISSION_MICROPHONE=1')
+      definitions << 'PERMISSION_SPEECH_RECOGNIZER=1' unless definitions.include?('PERMISSION_SPEECH_RECOGNIZER=1')
       config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] = definitions
     end
   end

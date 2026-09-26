@@ -7,6 +7,10 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Ellena uses the microphone so you can dictate a message.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Ellena uses speech recognition to turn what you say into a message.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Ellena uses the camera so you can send a photo in chat.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

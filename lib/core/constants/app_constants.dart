@@ -17,6 +17,16 @@ abstract final class AppConstants {
   static const String photosPermissionTitle = 'Photos are off';
   static const String photosPermissionBody =
       'Allow photo access in Settings to send a picture.';
+  static const String micPermissionTitle = 'Microphone is off';
+  static const String micPermissionBody =
+      'Allow microphone access in Settings to dictate a message.';
+  static const String speechPermissionTitle = 'Speech recognition is off';
+  static const String speechPermissionBody =
+      'Allow speech recognition in Settings to dictate a message.';
+  static const String dictateTooltip = 'Dictate';
+  static const String dictationDoneTooltip = 'Done';
+  static const String speechUnavailable =
+      'Speech recognition is not available on this device.';
   static const String openSettingsLabel = 'Open Settings';
   static const String notNowLabel = 'Not now';
   static const String attachmentFallbackPrompt = 'Look at the attached file.';
