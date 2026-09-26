@@ -100,6 +100,8 @@ class ChatCache {
     _evictExcept(conversationId);
   }
 
+  bool holds(String conversationId) => _protected.contains(conversationId);
+
   void protect(String conversationId) => _protected.add(conversationId);
 
   void unprotect(String conversationId, {String? keep}) {

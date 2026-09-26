@@ -76,8 +76,7 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
     return match.group(1) ?? '';
   }
 
-  bool get _expanded =>
-      _focusNode.hasFocus || _controller.text.isNotEmpty || widget.isStreaming;
+  bool get _expanded => _focusNode.hasFocus || _controller.text.isNotEmpty;
 
   @override
   void initState() {
@@ -131,6 +130,7 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
     _controller.clear();
     ref.read(composerQuoteProvider.notifier).clear();
     ref.read(skillPickerProvider.notifier).close();
+    _focusNode.unfocus();
     setState(() {});
     widget.onSend(text);
     ref.read(composerAttachmentProvider.notifier).clear();
@@ -215,7 +215,8 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-    final controlsEnabled = widget.enabled && !widget.isStreaming;
+    final fieldEnabled = widget.enabled;
+    final controlsEnabled = fieldEnabled && !widget.isStreaming;
     final motion = AppMotion.of(context, AppMotion.normal);
     final quote = ref.watch(composerQuoteProvider);
     final skill = ref.watch(selectedSkillProvider);
@@ -224,7 +225,7 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
     final slash = _slashQuery;
     final skillsOpen = ref.watch(skillPickerProvider);
     final showSlash = !_listening &&
-        controlsEnabled &&
+        fieldEnabled &&
         _focusNode.hasFocus &&
         (skillsOpen || slash != null);
 
@@ -267,11 +268,11 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
                 theme,
                 colors,
                 isDark,
-                controlsEnabled,
+                fieldEnabled,
                 quote,
                 skill,
               )
-            : _collapsedBody(theme, colors, controlsEnabled, quote, skill),
+            : _collapsedBody(theme, colors, fieldEnabled, quote, skill),
       ),
     );
 
@@ -334,7 +335,9 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
           _ComposerGlyph(
             icon: Icons.add,
             tooltip: AppConstants.addToChatTitle,
-            onPressed: controlsEnabled ? _openAddSheet : null,
+            onPressed: widget.enabled && !widget.isStreaming
+                ? _openAddSheet
+                : null,
           ),
           if (skill != null)
             Flexible(
@@ -365,6 +368,7 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
               icon: Icon(Icons.close, size: 18, color: colors.onSurfaceVariant),
             ),
           _mic(controlsEnabled),
+          if (widget.isStreaming) _stopControl(colors),
           const SizedBox(width: AppSpacing.xxs),
         ],
       ),
@@ -424,12 +428,16 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
               _ComposerGlyph(
                 icon: Icons.add,
                 tooltip: AppConstants.addToChatTitle,
-                onPressed: controlsEnabled ? _openAddSheet : null,
+                onPressed: widget.enabled && !widget.isStreaming
+                    ? _openAddSheet
+                    : null,
               ),
               _ComposerGlyph(
                 icon: Icons.electrical_services_outlined,
                 tooltip: AppConstants.settingsConnectors,
-                onPressed: controlsEnabled ? _openConnectors : null,
+                onPressed: widget.enabled && !widget.isStreaming
+                    ? _openConnectors
+                    : null,
               ),
               const Spacer(),
               _mic(controlsEnabled),
@@ -444,23 +452,7 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
                   );
                 },
                 child: widget.isStreaming
-                    ? FadeTransition(
-                        key: const ValueKey('stop'),
-                        opacity: Tween<double>(begin: 0.55, end: 1).animate(
-                          CurvedAnimation(
-                            parent: _pulse,
-                            curve: Curves.easeInOut,
-                          ),
-                        ),
-                        child: _RoundIconButton(
-                          tooltip: AppConstants.stopTooltip,
-                          icon: Icons.stop_rounded,
-                          onPressed: widget.onStop == null ? null : _stop,
-                          foreground: colors.onSurface,
-                          filled: true,
-                          fillColor: colors.surfaceContainerHighest,
-                        ),
-                      )
+                    ? _stopControl(colors)
                     : _RoundIconButton(
                         key: const ValueKey('send'),
                         tooltip: AppConstants.sendTooltip,
@@ -490,6 +482,23 @@ class _ChatComposerState extends ConsumerState<ChatComposer>
       icon: Icons.mic_none_rounded,
       tooltip: AppConstants.dictateTooltip,
       onPressed: controlsEnabled ? _toggleDictation : null,
+    );
+  }
+
+  Widget _stopControl(ColorScheme colors) {
+    return FadeTransition(
+      key: const ValueKey('stop'),
+      opacity: Tween<double>(begin: 0.55, end: 1).animate(
+        CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
+      ),
+      child: _RoundIconButton(
+        tooltip: AppConstants.stopTooltip,
+        icon: Icons.stop_rounded,
+        onPressed: widget.onStop == null ? null : _stop,
+        foreground: colors.onSurface,
+        filled: true,
+        fillColor: colors.surfaceContainerHighest,
+      ),
     );
   }
 

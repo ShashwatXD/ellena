@@ -156,7 +156,10 @@ class ChatNotifier extends Notifier<ChatState> {
     _cache.holdMessages(conversationId, [userMessage, assistantMessage]);
     state = state.copyWith(
       conversations: [conversation, ...state.conversations],
-      messagesByConversation: _cache.windows(),
+      messagesByConversation: _shown(
+        conversationId,
+        [userMessage, assistantMessage],
+      ),
       activeConversationId: conversationId,
     );
     unawaited(
@@ -220,7 +223,7 @@ class ChatNotifier extends Notifier<ChatState> {
       conversations: _replaceConversation(
         conversation.copyWith(updatedAt: now),
       ),
-      messagesByConversation: _cache.windows(),
+      messagesByConversation: _shown(conversationId, messages),
     );
     unawaited(
       _reloadListAfter(
@@ -239,7 +242,10 @@ class ChatNotifier extends Notifier<ChatState> {
     );
   }
 
-  Future<void> stopStreaming(String conversationId) async {
+  Future<void> _haltStream(
+    String conversationId, {
+    required bool cancelLive,
+  }) async {
     final messages = [...state.messagesFor(conversationId)];
     final index = messages.lastIndexWhere(
       (m) =>
@@ -250,9 +256,12 @@ class ChatNotifier extends Notifier<ChatState> {
 
     final messageId = messages[index].id;
     final stream = _streams.remove(messageId);
-
-    await _liveService?.cancel();
-    await stream?.cancel();
+    unawaited(stream?.cancel());
+    if (cancelLive) {
+      final service = _liveService;
+      _liveService = null;
+      unawaited(service?.cancel());
+    }
 
     messages[index] = messages[index].copyWith(
       status: MessageStatus.stopped,
@@ -261,6 +270,21 @@ class ChatNotifier extends Notifier<ChatState> {
     _cache.unprotect(conversationId, keep: state.activeConversationId);
     _publishMessages(conversationId, messages);
     unawaited(_flushPersist(conversationId));
+  }
+
+  Future<void> stopStreaming(String conversationId) {
+    return _haltStream(conversationId, cancelLive: true);
+  }
+
+  Future<void> _stopOtherStreams(String keepConversationId) async {
+    final others = [
+      for (final entry in state.messagesByConversation.entries)
+        if (entry.key != keepConversationId && _stillStreaming(entry.value))
+          entry.key,
+    ];
+    for (final id in others) {
+      await _haltStream(id, cancelLive: false);
+    }
   }
 
   bool isStreaming(String conversationId) {
@@ -299,6 +323,13 @@ class ChatNotifier extends Notifier<ChatState> {
         state.conversationById(conversationId) != null ||
         _cache.readConversation(conversationId) != null;
     if (!known) return;
+    if (_cache.holds(conversationId)) {
+      state = state.copyWith(
+        activeConversationId: conversationId,
+        messagesByConversation: _cache.windows(),
+      );
+      return;
+    }
     _cache.readMessages(conversationId);
     state = state.copyWith(
       activeConversationId: conversationId,
@@ -393,7 +424,6 @@ class ChatNotifier extends Notifier<ChatState> {
     _cache.invalidateList();
     state = state.copyWith(
       conversations: _cache.readConversations(),
-      messagesByConversation: _cache.windows(),
       clearActiveConversationId: clearActive,
     );
   }
@@ -463,6 +493,7 @@ class ChatNotifier extends Notifier<ChatState> {
       history.removeLast();
     }
 
+    await _stopOtherStreams(conversationId);
     _cache.protect(conversationId);
     final service = ref.read(streamingServiceProvider);
     _liveService = service;
@@ -567,7 +598,10 @@ class ChatNotifier extends Notifier<ChatState> {
         status: MessageStatus.complete,
       );
     }
-    _cache.unprotect(conversationId, keep: state.activeConversationId);
+    _cache.unprotect(
+      conversationId,
+      keep: state.activeConversationId ?? conversationId,
+    );
     _publishMessages(conversationId, messages);
     unawaited(_flushPersist(conversationId));
   }
@@ -613,14 +647,43 @@ class ChatNotifier extends Notifier<ChatState> {
       errorDetail: isCancel ? null : mapped.detail,
       clearError: isCancel,
     );
-    _cache.unprotect(conversationId, keep: state.activeConversationId);
+    _cache.unprotect(
+      conversationId,
+      keep: state.activeConversationId ?? conversationId,
+    );
     _publishMessages(conversationId, messages);
     unawaited(_flushPersist(conversationId));
   }
 
   void _publishMessages(String conversationId, List<Message> messages) {
     _cache.holdMessages(conversationId, messages);
-    state = state.copyWith(messagesByConversation: _cache.windows());
+    state = state.copyWith(
+      messagesByConversation: _shown(conversationId, messages),
+    );
+  }
+
+  Map<String, List<Message>> _shown(
+    String conversationId,
+    List<Message> messages,
+  ) {
+    final active = state.activeConversationId;
+    return {
+      for (final entry in state.messagesByConversation.entries)
+        if (entry.key != conversationId &&
+            (entry.key == active || _stillStreaming(entry.value)))
+          entry.key: entry.value,
+      conversationId: messages,
+    };
+  }
+
+  bool _stillStreaming(List<Message> messages) {
+    for (final message in messages) {
+      if (message.role == MessageRole.assistant &&
+          message.status == MessageStatus.streaming) {
+        return true;
+      }
+    }
+    return false;
   }
 
   Future<void> _reloadListAfter(

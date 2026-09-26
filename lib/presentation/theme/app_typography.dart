@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 abstract final class AppTypography {
+  static String get uiFontFamily =>
+      !kIsWeb && Platform.isIOS ? '.SF Pro Text' : 'Inter';
+
   static TextTheme textTheme({
     required Color primary,
     required Color muted,
@@ -128,6 +131,17 @@ abstract final class AppTypography {
         labelSmall: TextStyle(fontFamily: '.SF Pro Text'),
       );
     }
-    return GoogleFonts.interTextTheme();
+    const tracking = TextStyle(fontFamily: 'Inter', letterSpacing: -0.2);
+    return const TextTheme(
+      bodyLarge: tracking,
+      bodyMedium: tracking,
+      bodySmall: tracking,
+      titleLarge: tracking,
+      titleMedium: tracking,
+      titleSmall: tracking,
+      labelLarge: tracking,
+      labelMedium: tracking,
+      labelSmall: tracking,
+    );
   }
 }

@@ -127,6 +127,12 @@ class GeminiStreamingService implements StreamingService {
     } on ApiException catch (error) {
       if (error.isCancel || generation != _generation) return;
       rethrow;
+    } catch (error) {
+      if (generation != _generation) return;
+      if (ApiException.isLostConnection(error)) {
+        throw const ApiException(message: AppConstants.checkYourInternet);
+      }
+      rethrow;
     }
   }
 

@@ -150,11 +150,13 @@ class _SkillHubScreenState extends ConsumerState<SkillHubScreen> {
                     for (var i = 0; i < shownMine.length; i++) ...[
                       if (i > 0)
                         Divider(
+                          key: ValueKey('mine-line-${shownMine[i].id}'),
                           height: 1,
                           thickness: AppSpacing.stroke,
                           color: colors.outline.withValues(alpha: 0.7),
                         ),
                       SkillHubTile(
+                        key: ValueKey(shownMine[i].id),
                         icon: shownMine[i].icon,
                         name: shownMine[i].name,
                         description: shownMine[i].description,
@@ -187,11 +189,13 @@ class _SkillHubScreenState extends ConsumerState<SkillHubScreen> {
                     for (var i = 0; i < explore.length; i++) ...[
                       if (i > 0)
                         Divider(
+                          key: ValueKey('explore-line-${explore[i].id}'),
                           height: 1,
                           thickness: AppSpacing.stroke,
                           color: colors.outline.withValues(alpha: 0.7),
                         ),
                       SkillHubTile(
+                        key: ValueKey(explore[i].id),
                         icon: explore[i].icon,
                         name: explore[i].name,
                         description: explore[i].description,

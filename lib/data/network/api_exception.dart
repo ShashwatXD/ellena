@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 
@@ -23,6 +24,9 @@ class ApiException implements Exception {
   final bool isCancel;
 
   factory ApiException.fromDio(DioException error) {
+    if (isLostConnection(error)) {
+      return const ApiException(message: AppConstants.checkYourInternet);
+    }
     if (error.type == DioExceptionType.cancel) {
       return switch (error.error) {
         ApiException.offlineReason => const ApiException(
@@ -65,6 +69,9 @@ class ApiException implements Exception {
 
   factory ApiException.fromObject(Object error) {
     if (error is ApiException) return error;
+    if (isLostConnection(error)) {
+      return const ApiException(message: AppConstants.checkYourInternet);
+    }
     if (error is DioException) return ApiException.fromDio(error);
     if (error is StateError) {
       return ApiException(
@@ -84,6 +91,31 @@ class ApiException implements Exception {
       message: AppConstants.contentPolicyBlocked,
       detail: clean == null || clean.isEmpty ? null : 'Blocked: $clean',
     );
+  }
+
+  static bool isLostConnection(Object error) {
+    if (error is SocketException) return true;
+    if (error is HttpException) return _looksOffline(error.message);
+    if (error is DioException) {
+      if (error.type == DioExceptionType.connectionError) return true;
+      final cause = error.error;
+      if (cause != null && cause != error && isLostConnection(cause)) {
+        return true;
+      }
+      return _looksOffline(error.message ?? '') || _looksOffline('$cause');
+    }
+    return _looksOffline(error.toString());
+  }
+
+  static bool _looksOffline(String text) {
+    final value = text.toLowerCase();
+    return value.contains('connection closed') ||
+        value.contains('connection reset') ||
+        value.contains('connection abort') ||
+        value.contains('failed host lookup') ||
+        value.contains('network is unreachable') ||
+        value.contains('software caused connection abort') ||
+        value.contains('socketexception');
   }
 
   static String _titleForStatus(int? status) {

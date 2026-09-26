@@ -21,8 +21,10 @@ class ChatScreen extends ConsumerStatefulWidget {
 }
 
 class _ChatScreenState extends ConsumerState<ChatScreen> {
-  final _scrollController = ScrollController();
+  final _scrollController = ScrollController(initialScrollOffset: 1000000000);
   bool _showJumpToBottom = false;
+  bool _stickToBottom = true;
+  double? _bodyHeight;
   static const _jumpThreshold = 120.0;
 
   @override
@@ -45,6 +47,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _onScroll() {
+    _stickToBottom = _isNearBottom;
     final show = !_isNearBottom;
     if (show != _showJumpToBottom) {
       setState(() => _showJumpToBottom = show);
@@ -52,12 +55,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _scrollToBottom({bool force = false}) {
+    final stick = force || _stickToBottom;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scrollController.hasClients) return;
-      if (!force && !_isNearBottom && _showJumpToBottom) return;
+      if (!mounted || !_scrollController.hasClients || !stick) return;
+      final position = _scrollController.position;
+      if (!position.hasContentDimensions) return;
+      final target = position.maxScrollExtent;
+      if ((target - position.pixels).abs() < 1) return;
       _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: AppMotion.of(context, AppMotion.normal),
+        target,
+        duration: AppMotion.of(context, AppMotion.fast),
         curve: AppMotion.standard,
       );
     });
@@ -83,15 +90,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     ref.listen(chatProvider, (prev, next) {
       final nextMessages = next.messagesFor(widget.conversationId);
       final prevMessages = prev?.messagesFor(widget.conversationId) ?? const [];
+      final nextLast = nextMessages.isEmpty ? null : nextMessages.last;
+      final prevLast = prevMessages.isEmpty ? null : prevMessages.last;
       if (nextMessages.length != prevMessages.length ||
-          (nextMessages.isNotEmpty &&
-              prevMessages.isNotEmpty &&
-              nextMessages.last.content != prevMessages.last.content)) {
+          nextLast?.content != prevLast?.content ||
+          nextLast?.status != prevLast?.status ||
+          nextLast?.error != prevLast?.error) {
         _scrollToBottom();
       }
     });
 
-    return Column(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final height = constraints.maxHeight;
+        final previous = _bodyHeight;
+        _bodyHeight = height;
+        if (previous != null && height < previous - 1 && _stickToBottom) {
+          _scrollToBottom(force: true);
+        }
+        return Column(
       children: [
         Expanded(
           child: messageIds.isEmpty
@@ -113,7 +130,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               : Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    ListView.separated(
+                    SingleChildScrollView(
                       controller: _scrollController,
                       keyboardDismissBehavior:
                           ScrollViewKeyboardDismissBehavior.onDrag,
@@ -123,17 +140,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         pagePad,
                         AppSpacing.lg,
                       ),
-                      itemCount: messageIds.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: AppSpacing.md),
-                      itemBuilder: (context, index) {
-                        final id = messageIds[index];
-                        return MessageBubble(
-                          key: ValueKey(id),
-                          conversationId: widget.conversationId,
-                          messageId: id,
-                        );
-                      },
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (var i = 0; i < messageIds.length; i++) ...[
+                            if (i > 0) const SizedBox(height: AppSpacing.md),
+                            MessageBubble(
+                              key: ValueKey(messageIds[i]),
+                              conversationId: widget.conversationId,
+                              messageId: messageIds[i],
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                     Positioned(
                       left: 0,
@@ -151,6 +170,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ),
         ChatComposerSlot(conversationId: widget.conversationId),
       ],
+    );
+      },
     );
   }
 }

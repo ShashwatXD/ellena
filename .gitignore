@@ -36,6 +36,12 @@ app.*.map.json
 
 config/*.local.json
 .env
+
+/android/key.properties
+*.jks
+*.keystore
 .idea/
 *.iml
 .metadata
+server/node_modules/
+server/data/

@@ -59,6 +59,7 @@ abstract final class AppTheme {
       useMaterial3: true,
       brightness: brightness,
       colorScheme: colorScheme,
+      fontFamily: AppTypography.uiFontFamily,
       scaffoldBackgroundColor: background,
       canvasColor: surface,
       dividerColor: outline,

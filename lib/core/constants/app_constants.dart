@@ -113,6 +113,7 @@ abstract final class AppConstants {
   static const String requestTimedOut = 'Request timed out';
   static const String connectionFailed = 'Connection failed';
   static const String noInternetConnection = 'No internet connection';
+  static const String checkYourInternet = 'Check your internet';
   static const String titlePromptPrefix =
       'Reply with a 3-6 word chat title only. No quotes or punctuation.\n\n';
 
@@ -165,8 +166,6 @@ abstract final class AppConstants {
   static const String deleteAllChatsDone = 'All chats deleted';
 
   static const String mockResponsesLabel = 'Mock responses';
-  static const String usingMockStream = 'Using mock stream';
-  static const String usingGeminiStream = 'Using Gemini';
 
   static const String mockScenarioShort = 'Short';
   static const String mockScenarioMarkdown = 'Markdown';

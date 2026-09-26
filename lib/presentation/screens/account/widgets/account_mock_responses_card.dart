@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../theme/app_spacing.dart';
-import '../../../common_widgets/app_snack_bar.dart';
 import '../../../providers/providers.dart';
 import 'account_settings_card.dart';
 
@@ -46,15 +45,6 @@ class AccountMockResponsesCard extends ConsumerWidget {
               onChanged: (value) {
                 HapticFeedback.selectionClick();
                 ref.read(useFakeStreamProvider.notifier).setEnabled(value);
-                AppSnackBar.show(
-                  context,
-                  message: value
-                      ? AppConstants.usingMockStream
-                      : AppConstants.usingGeminiStream,
-                  icon: value
-                      ? Icons.science_outlined
-                      : Icons.auto_awesome_outlined,
-                );
               },
             ),
           ],
