@@ -14,6 +14,7 @@ import '../../common_widgets/app_snack_bar.dart';
 import 'utils/account_menu_items.dart';
 import 'widgets/account_circle_icon_button.dart';
 import 'widgets/account_delete_chats_button.dart';
+import 'widgets/account_device_cards.dart';
 import 'widgets/account_menu_tile.dart';
 import 'widgets/account_mock_responses_card.dart';
 import 'widgets/account_settings_card.dart';
@@ -241,6 +242,8 @@ class AccountScreen extends ConsumerWidget {
               ],
             ),
           ),
+          const SizedBox(height: AppSpacing.sm),
+          const AccountDeviceCards(),
           const SizedBox(height: AppSpacing.lg),
           AccountDeleteChatsButton(
             onConfirm: () async {

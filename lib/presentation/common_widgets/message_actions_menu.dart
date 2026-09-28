@@ -13,13 +13,14 @@ abstract final class MessageActionsMenu {
     required Rect anchor,
     required String text,
     required bool isUser,
+    Widget? rendered,
   }) {
     final actions = isUser ? _user : _assistant;
     return HoldMenu.show<MessageAction>(
       context,
       anchor: anchor,
       alignEnd: isUser,
-      preview: _LiftedMessage(text: text, isUser: isUser),
+      preview: _LiftedMessage(text: text, isUser: isUser, rendered: rendered),
       items: [
         for (final action in actions)
           HoldMenuItem(value: action, label: action.label, icon: action.icon),
@@ -61,10 +62,15 @@ extension on MessageAction {
 }
 
 class _LiftedMessage extends StatelessWidget {
-  const _LiftedMessage({required this.text, required this.isUser});
+  const _LiftedMessage({
+    required this.text,
+    required this.isUser,
+    this.rendered,
+  });
 
   final String text;
   final bool isUser;
+  final Widget? rendered;
 
   static const _corner = Radius.circular(AppRadii.lg);
   static const _point = Radius.circular(5);
@@ -93,11 +99,28 @@ class _LiftedMessage extends StatelessWidget {
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-        child: Text(
-          text,
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.45),
+      child: ClipRRect(
+        borderRadius: BorderRadius.only(
+          topLeft: _corner,
+          topRight: _corner,
+          bottomLeft: isUser ? _corner : _point,
+          bottomRight: isUser ? _point : _corner,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          child: rendered == null
+              ? Text(
+                  text,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyLarge?.copyWith(height: 1.45),
+                )
+              : ListView(
+                  shrinkWrap: true,
+                  physics: const ClampingScrollPhysics(),
+                  padding: EdgeInsets.zero,
+                  children: [rendered!],
+                ),
         ),
       ),
     );

@@ -3,17 +3,20 @@ import 'package:flutter/material.dart';
 import '../../../theme/app_spacing.dart';
 
 class AccountMenuTile extends StatelessWidget {
-  const AccountMenuTile({super.key, 
+  const AccountMenuTile({
+    super.key,
     required this.icon,
     required this.label,
-    required this.onTap,
+    this.onTap,
     this.trailing,
+    this.showChevron = true,
   });
 
   final IconData icon;
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final Widget? trailing;
+  final bool showChevron;
 
   @override
   Widget build(BuildContext context) {
@@ -31,18 +34,15 @@ class AccountMenuTile extends StatelessWidget {
           children: [
             Icon(icon, size: 22, color: colors.onSurface),
             const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text(label, style: theme.textTheme.bodyLarge),
-            ),
-            if (trailing != null) ...[
-              trailing!,
-              const SizedBox(width: 4),
-            ],
-            Icon(
-              Icons.chevron_right_rounded,
-              size: 20,
-              color: colors.onSurfaceVariant,
-            ),
+            Expanded(child: Text(label, style: theme.textTheme.bodyLarge)),
+            ?trailing,
+            if (trailing != null && showChevron) const SizedBox(width: 4),
+            if (showChevron)
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: colors.onSurfaceVariant,
+              ),
           ],
         ),
       ),

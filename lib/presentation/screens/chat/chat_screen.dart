@@ -92,6 +92,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   void _jumpToBottom() {
     HapticFeedback.selectionClick();
+    _stickToBottom = true;
+    _syncJumpButton();
     _scrollToBottom(force: true);
   }
 

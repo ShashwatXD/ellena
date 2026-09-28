@@ -103,7 +103,11 @@ abstract final class AppConstants {
   static const String copyTooltip = 'Copy';
   static const String geminiRequestFailed = 'Request failed';
   static const String rateLimitReached = 'Rate limit reached';
+  static const String rateLimitDetail =
+      'Too many requests. Wait a moment and try again.';
   static const String contentPolicyBlocked = 'Blocked by content policy';
+  static const String contentPolicyDetail =
+      'This message was blocked. Try rephrasing it.';
   static const String authenticationFailed = 'Authentication failed';
   static const String invalidRequest = 'Invalid request';
   static const String modelNotFound = 'Model not found';
@@ -124,6 +128,7 @@ abstract final class AppConstants {
   static const String themeLight = 'Light';
   static const String themeDark = 'Dark';
   static const String themeSystem = 'System';
+  static const String themeFollowSystem = 'Follow system';
 
   static const String mockUserName = 'Shashwat Test';
   static const String mockUserEmail = 'shashwat.sandbox@gmail.com';
@@ -151,6 +156,28 @@ abstract final class AppConstants {
   static const String skillHubOpenTooltip = 'Skill Hub';
   static const String settingsConnectors = 'Connectors';
   static const String settingsIntegrations = 'Integrations';
+  static const String settingsLanguage = 'Language';
+  static const String settingsLanguageValue = 'English';
+  static const String settingsAppearance = 'Appearance';
+  static const String settingsClearCache = 'Clear cache';
+  static const String settingsRateApp = 'Rate this app';
+  static const String settingsGetHelp = 'Get help';
+  static const String settingsVersion = 'Version';
+  static const String settingsVersionValue = '1.0.0';
+  static const String settingsLogOut = 'Log out';
+  static const String signInNotConnected =
+      'This sign-in isn\'t connected. Use Log in as dev.';
+  static const String welcomeTitle = 'Welcome to Ellena';
+  static const String continueWithGoogle = 'Continue with Google';
+  static const String continueWithMicrosoft = 'Continue with Microsoft';
+  static const String continueWithEmail = 'Continue with Email';
+  static const String loginAsDev = 'Log in as dev';
+  static const String forgotPassword = 'Forgot password';
+  static const String restoreAccount = 'Restore account';
+  static const String orLabel = 'OR';
+  static const String termsOfService = 'Terms of Service';
+  static const String privacyPolicy = 'Privacy Policy';
+  static const String welcomeCopyright = '© 2026 Ellena';
   static const String deleteAllChatsLabel = 'Delete all chats';
   static const String deleteAllChatsTitle = 'Delete all chats?';
   static const String deleteAllChatsBody =

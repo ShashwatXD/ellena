@@ -3,11 +3,15 @@ import 'package:go_router/go_router.dart';
 import '../screens/account/account_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/skill_hub/skill_hub_screen.dart';
+import '../screens/welcome/welcome_screen.dart';
 import 'fade_slide_page.dart';
 
 abstract final class AppRoutes {
   static const String home = '/';
   static const String homeName = 'home';
+
+  static const String welcome = '/welcome';
+  static const String welcomeName = 'welcome';
 
   static const String account = '/account';
   static const String accountName = 'account';
@@ -17,6 +21,11 @@ abstract final class AppRoutes {
 }
 
 List<RouteBase> get appRoutes => [
+      GoRoute(
+        path: AppRoutes.welcome,
+        name: AppRoutes.welcomeName,
+        builder: (context, state) => const WelcomeScreen(),
+      ),
       GoRoute(
         path: AppRoutes.home,
         name: AppRoutes.homeName,

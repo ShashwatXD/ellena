@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_streaming_text_markdown/flutter_streaming_text_markdown.dart';
+import 'package:gpt_markdown/gpt_markdown.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/models/chat_attachment.dart';
@@ -125,6 +127,7 @@ Future<void> _openActions(
     anchor: anchor,
     text: text,
     isUser: isUser,
+    rendered: isUser ? null : _ReplyPreview(text: text),
   );
   if (!context.mounted || action == null) return;
   switch (action) {
@@ -137,6 +140,26 @@ Future<void> _openActions(
     case MessageAction.share:
     case MessageAction.report:
       break;
+  }
+}
+
+class _ReplyPreview extends StatelessWidget {
+  const _ReplyPreview({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.45);
+    return GptMarkdown(
+      visibleMarkdown(text),
+      style: style,
+      onLinkTap: (url, title) => OpenLink.open(url),
+      codeBuilder: (context, name, code, closed) =>
+          _MarkdownCodeBlock(name: name, code: code),
+      imageBuilder: (context, url, width, height) =>
+          _MarkdownImage(url: url, width: width, height: height),
+    );
   }
 }
 

@@ -12,26 +12,14 @@ class AccountSettingsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
-    final card = AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOutCubic,
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: child,
-    );
-
-    if (onTap == null) return card;
-
+    final radius = BorderRadius.circular(AppRadii.lg);
     return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-        child: card,
-      ),
+      color: colors.surface,
+      borderRadius: radius,
+      clipBehavior: Clip.antiAlias,
+      child: onTap == null
+          ? child
+          : InkWell(onTap: onTap, child: child),
     );
   }
 }

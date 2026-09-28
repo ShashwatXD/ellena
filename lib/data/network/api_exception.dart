@@ -30,14 +30,14 @@ class ApiException implements Exception {
     if (error.type == DioExceptionType.cancel) {
       return switch (error.error) {
         ApiException.offlineReason => const ApiException(
-            message: AppConstants.connectionFailed,
-            detail: AppConstants.noInternetConnection,
-          ),
+          message: AppConstants.connectionFailed,
+          detail: AppConstants.noInternetConnection,
+        ),
         _ => const ApiException(
-            message: AppConstants.stoppedLabel,
-            isCancel: true,
-            type: DioExceptionType.cancel,
-          ),
+          message: AppConstants.stoppedLabel,
+          isCancel: true,
+          type: DioExceptionType.cancel,
+        ),
       };
     }
 
@@ -47,19 +47,21 @@ class ApiException implements Exception {
     final message = switch (error.type) {
       DioExceptionType.connectionTimeout ||
       DioExceptionType.sendTimeout ||
-      DioExceptionType.receiveTimeout =>
-        AppConstants.requestTimedOut,
+      DioExceptionType.receiveTimeout => AppConstants.requestTimedOut,
       DioExceptionType.connectionError => AppConstants.connectionFailed,
       DioExceptionType.badResponse =>
         policy ? AppConstants.contentPolicyBlocked : _titleForStatus(status),
-      _ => policy
-          ? AppConstants.contentPolicyBlocked
-          : AppConstants.geminiRequestFailed,
+      _ =>
+        policy
+            ? AppConstants.contentPolicyBlocked
+            : AppConstants.geminiRequestFailed,
     };
 
     return ApiException(
       message: message,
-      detail: error.type == DioExceptionType.connectionError
+      detail: policy
+          ? AppConstants.contentPolicyDetail
+          : error.type == DioExceptionType.connectionError
           ? AppConstants.noInternetConnection
           : body.detail(status),
       statusCode: status,
@@ -86,10 +88,9 @@ class ApiException implements Exception {
   }
 
   factory ApiException.contentPolicy({String? reason}) {
-    final clean = reason?.trim();
-    return ApiException(
+    return const ApiException(
       message: AppConstants.contentPolicyBlocked,
-      detail: clean == null || clean.isEmpty ? null : 'Blocked: $clean',
+      detail: AppConstants.contentPolicyDetail,
     );
   }
 
@@ -126,9 +127,10 @@ class ApiException implements Exception {
       404 => AppConstants.modelNotFound,
       503 => AppConstants.serviceUnavailable,
       500 || 502 || 504 => AppConstants.serverError,
-      _ => status != null
-          ? '${AppConstants.geminiRequestFailed} ($status)'
-          : AppConstants.geminiRequestFailed,
+      _ =>
+        status != null
+            ? '${AppConstants.geminiRequestFailed} ($status)'
+            : AppConstants.geminiRequestFailed,
     };
   }
 
@@ -167,6 +169,9 @@ class _GeminiBody {
     if (httpStatus == 503) {
       if (clean != null) return clean;
       return AppConstants.serviceUnavailableDetail;
+    }
+    if (httpStatus == 429 && clean == null) {
+      return AppConstants.rateLimitDetail;
     }
     final parts = <String>[];
     if (httpStatus != null) parts.add('HTTP $httpStatus');

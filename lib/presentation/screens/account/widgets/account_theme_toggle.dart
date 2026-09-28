@@ -27,7 +27,7 @@ class AccountThemeToggle extends ConsumerWidget {
                 );
           },
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
+            duration: Duration.zero,
             curve: Curves.easeOutCubic,
             width: 40,
             height: 40,
@@ -41,7 +41,7 @@ class AccountThemeToggle extends ConsumerWidget {
               ),
             ),
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 180),
+              duration: Duration.zero,
               switchInCurve: Curves.easeOutCubic,
               switchOutCurve: Curves.easeInCubic,
               transitionBuilder: (child, animation) {

@@ -63,10 +63,10 @@ class _AssistantBubble extends StatelessWidget {
                         markdownEnabled: true,
                         animationsEnabled: false,
                         autoScroll: false,
+                        padding: EdgeInsets.zero,
                         styleSheet: theme.textTheme.bodyLarge?.copyWith(
                           height: 1.6,
                         ),
-                        padding: EdgeInsets.zero,
                         onLinkTap: (url, title) {
                           OpenLink.open(url);
                         },
@@ -80,6 +80,8 @@ class _AssistantBubble extends StatelessWidget {
                             ),
                           ),
                         ),
+                        imageBuilder: (context, url) =>
+                            _MarkdownImage(url: url),
                       ),
                     ),
                     if (streaming) ...[
@@ -139,4 +141,74 @@ class _ReplyWidth extends StatelessWidget {
 
     return SizedBox(width: painter.size.width.clamp(0.0, inner), child: child);
   }
+}
+
+class _MarkdownImage extends StatelessWidget {
+  const _MarkdownImage({required this.url, this.width, this.height});
+
+  final String url;
+  final double? width;
+  final double? height;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final fromUrl = _sizeInUrl(url);
+    final boxWidth = width ?? fromUrl.$1 ?? 240;
+    final boxHeight = height ?? fromUrl.$2 ?? width ?? 160;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      child: Image.network(
+        url,
+        width: boxWidth,
+        height: boxHeight,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, progress) {
+          if (progress == null) return child;
+          return SizedBox(
+            width: boxWidth,
+            height: boxHeight,
+            child: ColoredBox(
+              color: colors.surfaceContainerHighest,
+              child: Center(
+                child: SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return SizedBox(
+            width: boxWidth,
+            height: boxHeight,
+            child: ColoredBox(
+              color: colors.surfaceContainerHighest,
+              child: Icon(
+                Icons.broken_image_outlined,
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+(double?, double?) _sizeInUrl(String url) {
+  final segments = Uri.tryParse(url)?.pathSegments;
+  if (segments == null || segments.length < 2) return (null, null);
+  final width = double.tryParse(segments[segments.length - 2]);
+  final height = double.tryParse(segments.last.split('.').first);
+  if (width == null || height == null) return (null, null);
+  if (width < 16 || height < 16 || width > 2000 || height > 2000) {
+    return (null, null);
+  }
+  return (width, height);
 }

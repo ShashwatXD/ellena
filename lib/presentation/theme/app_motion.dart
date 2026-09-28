@@ -6,7 +6,7 @@ abstract final class AppMotion {
   static const Duration normal = Duration(milliseconds: 200);
   static const Duration emphasis = Duration(milliseconds: 280);
   static const Duration drawer = Duration(milliseconds: 260);
-  static const Duration theme = Duration(milliseconds: 180);
+  static const Duration theme = Duration.zero;
 
   static const Curve standard = Curves.easeOutCubic;
   static const Curve emphasized = Curves.easeInOutCubic;

@@ -18,7 +18,7 @@ class ThemeModeNotifier extends Notifier<ThemeMode> {
   }
 
   Future<void> setMode(ThemeMode mode) async {
-    await AppStorage.save(StorageKeys.themeMode, mode.name);
     state = mode;
+    await AppStorage.save(StorageKeys.themeMode, mode.name);
   }
 }
