@@ -25,7 +25,7 @@ void main() {
 
       final mapped = ApiException.fromDio(error);
       expect(mapped.message, AppConstants.contentPolicyBlocked);
-      expect(mapped.detail, contains('safety'));
+      expect(mapped.detail, AppConstants.contentPolicyDetail);
     });
 
     test('maps PROHIBITED_CONTENT status to content-policy label', () {
@@ -117,6 +117,7 @@ void main() {
         ),
       );
       expect(limited.message, AppConstants.rateLimitReached);
+      expect(limited.detail, AppConstants.rateLimitDetail);
     });
 
     test('keeps invalid request when 400 is not policy-related', () {

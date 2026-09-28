@@ -71,6 +71,34 @@ void main() {
     );
   });
 
+  test(
+    'blocked, rate limit, and a timeout before text match the Gemini lines',
+    () async {
+      Future<ApiException> thrownFor(MockStreamScenario scenario) async {
+        final stream = service(scenario);
+        stream.beginGeneration();
+        try {
+          await stream.streamReply(prompt: 'hi', model: 'm').toList();
+        } on ApiException catch (error) {
+          return error;
+        }
+        fail('expected an ApiException');
+      }
+
+      final blocked = await thrownFor(MockStreamScenario.blocked);
+      expect(blocked.message, AppConstants.contentPolicyBlocked);
+      expect(blocked.detail, AppConstants.contentPolicyDetail);
+
+      final limited = await thrownFor(MockStreamScenario.rateLimited);
+      expect(limited.message, AppConstants.rateLimitReached);
+      expect(limited.detail, AppConstants.rateLimitDetail);
+
+      final timedOut = await thrownFor(MockStreamScenario.timedOut);
+      expect(timedOut.message, AppConstants.requestTimedOut);
+      expect(timedOut.detail, isNull);
+    },
+  );
+
   test('offline scenario throws a connection failure', () async {
     final stream = service(MockStreamScenario.offline);
     stream.beginGeneration();
