@@ -18,9 +18,9 @@ import '../../data/streaming/message_stream.dart';
 import '../../data/streaming/stream_event.dart';
 import '../../data/streaming/streaming_service.dart';
 import 'chat_state.dart';
+import 'app_config_provider.dart';
 import 'data_providers.dart';
 import 'mock_stream_provider.dart';
-import 'model_provider.dart';
 import 'composer_attachment_provider.dart';
 import 'skill_provider.dart';
 
@@ -497,7 +497,7 @@ class ChatNotifier extends Notifier<ChatState> {
     _cache.protect(conversationId);
     final service = ref.read(streamingServiceProvider);
     _liveService = service;
-    final model = ref.read(selectedModelProvider).id;
+    final model = ref.read(appConfigProvider).geminiModel;
 
     await _streams.remove(messageId)?.cancel();
     final generation = service.beginGeneration();

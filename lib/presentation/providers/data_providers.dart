@@ -76,6 +76,7 @@ final geminiTitleProvider = Provider<GeminiTitleService>((ref) {
   return GeminiTitleService(
     repository: ref.watch(apiRepositoryProvider),
     apiKey: config.geminiApiKey,
+    model: config.geminiModel,
   );
 });
 

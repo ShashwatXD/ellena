@@ -117,13 +117,6 @@ abstract final class AppConstants {
   static const String titlePromptPrefix =
       'Reply with a 3-6 word chat title only. No quotes or punctuation.\n\n';
 
-  static const String modelFlashLiteLabel = '3.5 Flash-Lite';
-  static const String modelFlashLiteSubtitle = 'Fast';
-  static const String modelFlashLabel = '3.5 Flash';
-  static const String modelFlashSubtitle = 'Balanced';
-  static const String modelProLabel = '3.1 Pro';
-  static const String modelProSubtitle = 'Stronger';
-
   static const String settingsTitle = 'Settings';
   static const String accountTooltip = 'Account';
   static const String backTooltip = 'Back';
@@ -178,19 +171,46 @@ abstract final class AppConstants {
   static const String mockStreamFailed = 'Mock stream failed';
 
   static const List<String> fakeStreamChunks = [
-    '## Quick answer\n\n',
-    'Here is a **markdown** demo while we wait on a live Gemini key.\n\n',
-    '- Model selector is wired through the same stream path\n',
-    '- Streaming works the same for fake and Gemini\n',
-    '- Stop keeps only what already arrived\n\n',
-    '```dart\n',
-    'streamingService.streamReply(prompt: prompt, model: model);\n',
-    '```\n\n',
+    '## Weird markdown, one reply\n\n',
+    'Several odd blocks in a single stream so the bubble can show them together.\n\n',
+    '### Table 1 — short\n\n',
     '| Mode | Source |\n',
     '| --- | --- |\n',
-    '| Fake | Local scripted chunks |\n',
-    '| Gemini | `streamGenerateContent` SSE |\n\n',
-    'Ask anything else when you are ready.',
+    '| Fake | Local chunks |\n',
+    '| Gemini | `streamGenerateContent` |\n\n',
+    '### Table 2 — wide\n\n',
+    '| # | City | Temp | Note | Code | Status |\n',
+    '| --- | --- | --- | --- | --- | --- |\n',
+    '| 1 | Delhi | 34°C | humid afternoon | `hot` | open |\n',
+    '| 2 | Oslo | -2°C | pipe in words and / symbols | `cold` | done |\n',
+    '| 3 | Tokyo | 18°C | a-very-long-unbroken-cell-token-that-should-not-wrap-cleanly | `ok` | queued |\n\n',
+    '### Table 3 — skinny and empty cells\n\n',
+    '| A | B | C |\n',
+    '| --- | --- | --- |\n',
+    '| only |  |  |\n',
+    '|  | middle |  |\n',
+    '| **bold** | *italic* | `code` |\n\n',
+    '### Mixed list\n\n',
+    '1. Parent with **bold** and *italic*\n',
+    '2. Nested\n',
+    '   - child one\n',
+    '   - child two with `inline`\n',
+    '     - grandchild\n',
+    '3. A run-on token: ',
+    'supercalifragilisticexpialidocious-token-with-no-spaces-so-the-line-overflows\n\n',
+    '### Fence that looks like a table\n\n',
+    '```text\n',
+    '| not | a | table |\n',
+    '| --- | --- | --- |\n',
+    'still code\n',
+    '```\n\n',
+    '### Quote, link, leftovers\n\n',
+    '> Quote with a pipe | in the middle and a [link](https://example.com).\n\n',
+    '~~Struck~~, then a raw angle `<tag>`, then \$x^2\$, then a picture that will not load:\n\n',
+    '![missing chart](https://example.invalid/chart.png)\n\n',
+    '- [x] three tables in this one reply\n',
+    '- [x] a fence\n',
+    '- [ ] live Gemini (mock off in Settings)\n',
   ];
 
   static const List<String> mockChunksShort = [

@@ -1,5 +1,4 @@
 import '../../core/constants/app_constants.dart';
-import '../../core/models/llm_model.dart';
 import '../network/api_repository.dart';
 import 'gemini_response.dart';
 
@@ -7,10 +6,12 @@ class GeminiTitleService {
   GeminiTitleService({
     required ApiRepository repository,
     required this.apiKey,
+    required this.model,
   }) : _repository = repository;
 
   final ApiRepository _repository;
   final String apiKey;
+  final String model;
 
   static const int _snippetChars = 120;
   static const int _maxTitleChars = 48;
@@ -30,7 +31,7 @@ class GeminiTitleService {
     if (snippet.isEmpty) return null;
 
     final result = await _repository.generateGeminiContent(
-      model: GeminiModels.flashLite.id,
+      model: model,
       body: {
         'contents': [
           {

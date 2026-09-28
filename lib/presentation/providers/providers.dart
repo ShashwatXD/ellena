@@ -5,7 +5,6 @@ export 'composer_attachment_provider.dart';
 export 'chat_state.dart';
 export 'data_providers.dart';
 export 'mock_stream_provider.dart';
-export 'model_provider.dart';
 export 'skill_provider.dart';
 export 'task_search_provider.dart';
 export 'theme_mode_provider.dart';
