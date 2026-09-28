@@ -92,7 +92,6 @@ abstract final class AppConstants {
   static const String retryLabel = 'Retry';
   static const String knowMoreLabel = 'Know more';
   static const String showLessLabel = 'Show less';
-  static const String copiedLabel = 'Copied';
   static const String askEllenaLabel = 'Ask Ellena';
   static const String shareLabel = 'Share';
   static const String copyLabel = 'Copy';
@@ -110,6 +109,8 @@ abstract final class AppConstants {
   static const String modelNotFound = 'Model not found';
   static const String serverError = 'Server error';
   static const String serviceUnavailable = 'Service temporarily unavailable';
+  static const String serviceUnavailableDetail =
+      'The service is busy. Try again in a moment.';
   static const String requestTimedOut = 'Request timed out';
   static const String connectionFailed = 'Connection failed';
   static const String noInternetConnection = 'No internet connection';
@@ -162,13 +163,10 @@ abstract final class AppConstants {
 
   static const String mockScenarioShort = 'Short';
   static const String mockScenarioMarkdown = 'Markdown';
+  static const String mockScenarioCode = 'Code';
   static const String mockScenarioLong = 'Long';
   static const String mockScenarioSlow = 'Slow';
   static const String mockScenarioEmpty = 'Empty';
-  static const String mockScenarioErrorEarly = 'Fail early';
-  static const String mockScenarioErrorMid = 'Fail mid';
-  static const String mockScenarioOffline = 'No internet';
-  static const String mockStreamFailed = 'Mock stream failed';
 
   static const List<String> fakeStreamChunks = [
     '## Weird markdown, one reply\n\n',
@@ -210,7 +208,66 @@ abstract final class AppConstants {
     '![missing chart](https://example.invalid/chart.png)\n\n',
     '- [x] three tables in this one reply\n',
     '- [x] a fence\n',
-    '- [ ] live Gemini (mock off in Settings)\n',
+    '- [ ] live Gemini (mock off in Settings)\n\n',
+    '### Heading ladder\n\n',
+    '#### Four\n\n',
+    '##### Five with _emphasis_\n\n',
+    '###### Six with `ticks`\n\n',
+    '---\n\n',
+    '⸻\n\n',
+    '### Escapes and a mark that never closes\n\n',
+    '\\*not italic\\* and \\_not emphasis\\_\n\n',
+    '***both*** then **bold with _italic inside_**\n\n',
+    '<u>underlined words</u> beside a source chip [3] and [11].\n\n',
+    'An unclosed **mark that runs on\n\n',
+    '### Links unlike the quote\n\n',
+    'https://example.com/q?a=1&b=2\n\n',
+    '[docs (v2)](https://example.com/docs_(v2))\n\n',
+    '### Quote inside a quote\n\n',
+    '> Outer line.\n',
+    '> > Inner line with **bold**.\n',
+    '> Back outside.\n\n',
+    '### Count from forty\n\n',
+    '40. High start\n',
+    '41. The next number\n',
+    '9. Then a reset\n\n',
+    '### Radios\n\n',
+    '(x) chosen\n',
+    '( ) still open\n\n',
+    '### One column, then a right-aligned number\n\n',
+    '| Only |\n',
+    '| --- |\n',
+    '| solo |\n',
+    '| pair of words |\n\n',
+    '| Left | Right |\n',
+    '| :--- | ---: |\n',
+    '| short | 100 |\n',
+    '| longer phrase here | 2 |\n\n',
+    '### Display math\n\n',
+    '\\[\n',
+    'e^{i\\pi}+1=0\n',
+    '\\]\n\n',
+    '### Almost JSON\n\n',
+    '```json\n',
+    '{\n',
+    '  "ok": true,\n',
+    '  "tags": ["a", "b",],\n',
+    '  "note": "trailing comma on purpose"\n',
+    '}\n',
+    '```\n\n',
+    '### Four spaces, not a fence\n\n',
+    '    def not_a_fence():\n',
+    '        return "spaces"\n\n',
+    '### Mixed direction\n\n',
+    'العربية beside English and עברית, then a break\u200bin the middle of a word.\n\n',
+    '### Pictures that load\n\n',
+    'A wide photo:\n\n',
+    '![320x180](https://picsum.photos/id/237/320/180)\n\n',
+    'A taller one:\n\n',
+    '![180x240](https://picsum.photos/id/1025/180/240)\n\n',
+    'A small square in the sentence ![64x64](https://picsum.photos/id/106/64/64) and then more words.\n\n',
+    'Empty alt, still a real file:\n\n',
+    '![](https://picsum.photos/id/1015/280/120)\n\n',
   ];
 
   static const List<String> mockChunksShort = [
@@ -229,10 +286,10 @@ abstract final class AppConstants {
   static const List<String> mockChunksErrorEarly = ['unreachable'];
 
   static const List<String> mockChunksErrorMid = [
-    'Partial answer so far.\n\n',
-    'Next chunk arrives...\n\n',
-    'One more before the failure...\n\n',
-    'This chunk should not appear.',
+    'A reply can begin before the request stops.\n\n',
+    'The words that already arrived stay on screen.\n\n',
+    'The rest never comes through.\n\n',
+    'This sentence is past the timeout.',
   ];
 
   static const List<String> mockChunksLong = [
@@ -296,5 +353,89 @@ abstract final class AppConstants {
     '### 10. Closing\n\n',
     'Chunk near the end - almost done.\n\n',
     'Final token - long scenario complete. You can send again or switch scenarios on home.',
+  ];
+
+  static const List<String> mockChunksCode = [
+    'A streamed reply can be mostly one fence.\n\n',
+    '```dart\n',
+    'import \'dart:async\';\n',
+    'import \'dart:convert\';\n\n',
+    'class ReplyClient {\n',
+    '  ReplyClient({required this.endpoint, required this.token});\n\n',
+    '  final Uri endpoint;\n',
+    '  final String token;\n',
+    '  final _open = <String, StreamController<String>>{};\n\n',
+    '  Stream<String> listen(String chatId) {\n',
+    '    final controller = StreamController<String>();\n',
+    '    _open[chatId] = controller;\n',
+    '    controller.onCancel = () => _open.remove(chatId);\n',
+    '    return controller.stream;\n',
+    '  }\n\n',
+    '  Future<void> send({\n',
+    '    required String chatId,\n',
+    '    required String prompt,\n',
+    '    List<Turn> history = const [],\n',
+    '  }) async {\n',
+    '    final body = jsonEncode({\n',
+    '      \'chatId\': chatId,\n',
+    '      \'prompt\': prompt,\n',
+    '      \'history\': [\n',
+    '        for (final turn in history)\n',
+    '          {\'role\': turn.role, \'text\': turn.text},\n',
+    '      ],\n',
+    '    });\n',
+    '    final request = await HttpClient().postUrl(endpoint);\n',
+    '    request.headers.set(\'authorization\', \'Bearer \$token\');\n',
+    '    request.headers.contentType = ContentType.json;\n',
+    '    request.add(utf8.encode(body));\n',
+    '    final response = await request.close();\n',
+    '    if (response.statusCode == 503) {\n',
+    '      throw const ReplyException(\'Service temporarily unavailable\');\n',
+    '    }\n',
+    '    if (response.statusCode != 200) {\n',
+    '      throw ReplyException(\'Request failed (\${response.statusCode})\');\n',
+    '    }\n',
+    '    final sink = _open[chatId];\n',
+    '    await for (final line in response\n',
+    '        .transform(utf8.decoder)\n',
+    '        .transform(const LineSplitter())) {\n',
+    '      if (!line.startsWith(\'data:\')) continue;\n',
+    '      final payload = line.substring(5).trim();\n',
+    '      if (payload == \'[DONE]\') break;\n',
+    '      final decoded = jsonDecode(payload);\n',
+    '      if (decoded is! Map<String, dynamic>) continue;\n',
+    '      final text = decoded[\'text\'];\n',
+    '      if (text is String && text.isNotEmpty) sink?.add(text);\n',
+    '      final reason = decoded[\'finishReason\'];\n',
+    '      if (reason == \'STOP\') break;\n',
+    '      if (reason == \'SAFETY\') {\n',
+    '        throw const ReplyException(\'Blocked by content policy\');\n',
+    '      }\n',
+    '    }\n',
+    '    await sink?.close();\n',
+    '  }\n',
+    '}\n\n',
+    'class Turn {\n',
+    '  const Turn({required this.role, required this.text});\n\n',
+    '  final String role;\n',
+    '  final String text;\n',
+    '}\n\n',
+    'class ReplyException implements Exception {\n',
+    '  const ReplyException(this.message);\n',
+    '  final String message;\n',
+    '  @override\n',
+    '  String toString() => message;\n',
+    '}\n\n',
+    'String titleFrom(String prompt) {\n',
+    '  final words = prompt\n',
+    '      .trim()\n',
+    '      .split(RegExp(r\'\\s+\'))\n',
+    '      .where((word) => word.isNotEmpty)\n',
+    '      .take(6);\n',
+    '  final title = words.join(\' \');\n',
+    '  if (title.isEmpty) return \'Chat\';\n',
+    '  return title.length > 48 ? \'\$title...\' : title;\n',
+    '}\n',
+    '```\n',
   ];
 }

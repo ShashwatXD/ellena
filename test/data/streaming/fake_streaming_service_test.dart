@@ -23,18 +23,50 @@ void main() {
     expect(events.last.metaValue, 'STOP');
   });
 
-  test('an early script failure throws before any text', () async {
+  test('an early failure is a 503 before any text', () async {
     final stream = service(MockStreamScenario.errorEarly);
     stream.beginGeneration();
 
     await expectLater(
       stream.streamReply(prompt: 'hi', model: 'm').toList(),
       throwsA(
-        isA<StateError>().having(
-          (error) => error.message,
-          'message',
-          AppConstants.mockStreamFailed,
-        ),
+        isA<ApiException>()
+            .having(
+              (error) => error.message,
+              'message',
+              AppConstants.serviceUnavailable,
+            )
+            .having(
+              (error) => error.detail,
+              'detail',
+              AppConstants.serviceUnavailableDetail,
+            ),
+      ),
+    );
+  });
+
+  test('a mid-stream failure is a timeout after some text', () async {
+    final stream = service(MockStreamScenario.errorMid);
+    stream.beginGeneration();
+
+    Object? thrown;
+    final texts = <String>[];
+    try {
+      await for (final event in stream.streamReply(prompt: 'hi', model: 'm')) {
+        final text = event.text;
+        if (text != null) texts.add(text);
+      }
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(texts, AppConstants.mockChunksErrorMid.take(3));
+    expect(
+      thrown,
+      isA<ApiException>().having(
+        (error) => error.message,
+        'message',
+        AppConstants.requestTimedOut,
       ),
     );
   });
@@ -54,5 +86,4 @@ void main() {
       ),
     );
   });
-
 }

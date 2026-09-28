@@ -17,6 +17,7 @@ import '../../theme/app_radii.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
 import '../../utils/clipboard_copy.dart';
+import '../../utils/markdown_display.dart';
 import '../../utils/open_link.dart';
 import '../message_actions_menu.dart';
 import '../select_text_sheet.dart';
@@ -130,7 +131,7 @@ Future<void> _openActions(
     case MessageAction.ask:
       ref.read(composerQuoteProvider.notifier).set(text);
     case MessageAction.copy:
-      await ClipboardCopy.copy(context, text, notify: false);
+      await ClipboardCopy.copy(context, text);
     case MessageAction.selectText:
       await SelectTextSheet.show(context, text);
     case MessageAction.share:

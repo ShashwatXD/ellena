@@ -5,6 +5,8 @@ import 'api_routes.dart';
 import 'api_service.dart';
 
 class ApiRepository {
+  static const streamSilence = Duration(seconds: 30);
+
   ApiRepository(
     this._api, {
     ApiService? history,
@@ -26,7 +28,7 @@ class ApiRepository {
       data: body,
       options: Options(
         responseType: ResponseType.stream,
-        receiveTimeout: Duration.zero,
+        receiveTimeout: streamSilence,
         headers: const {
           Headers.acceptHeader: 'text/event-stream',
           Headers.contentTypeHeader: Headers.jsonContentType,

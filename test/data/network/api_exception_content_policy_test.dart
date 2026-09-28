@@ -48,6 +48,55 @@ void main() {
       expect(mapped.message, AppConstants.contentPolicyBlocked);
     });
 
+    test('uses a short line when a 503 has no readable body', () {
+      final empty = ApiException.fromDio(
+        DioException(
+          requestOptions: RequestOptions(path: '/'),
+          type: DioExceptionType.badResponse,
+          response: Response(
+            requestOptions: RequestOptions(path: '/'),
+            statusCode: 503,
+          ),
+        ),
+      );
+      expect(empty.message, AppConstants.serviceUnavailable);
+      expect(empty.detail, AppConstants.serviceUnavailableDetail);
+
+      final page = ApiException.fromDio(
+        DioException(
+          requestOptions: RequestOptions(path: '/'),
+          type: DioExceptionType.badResponse,
+          response: Response(
+            requestOptions: RequestOptions(path: '/'),
+            statusCode: 503,
+            data: '<html><body>unavailable</body></html>',
+          ),
+        ),
+      );
+      expect(page.detail, AppConstants.serviceUnavailableDetail);
+
+      final explained = ApiException.fromDio(
+        DioException(
+          requestOptions: RequestOptions(path: '/'),
+          type: DioExceptionType.badResponse,
+          response: Response(
+            requestOptions: RequestOptions(path: '/'),
+            statusCode: 503,
+            data: {
+              'error': {
+                'message': 'The model is overloaded. Please try again later.',
+                'status': 'UNAVAILABLE',
+              },
+            },
+          ),
+        ),
+      );
+      expect(
+        explained.detail,
+        'The model is overloaded. Please try again later.',
+      );
+    });
+
     test('maps timeouts and rate limits to their own labels', () {
       final timeout = ApiException.fromDio(
         DioException(

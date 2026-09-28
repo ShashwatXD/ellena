@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/models/message_status.dart';
 import '../../providers/providers.dart';
 import '../../theme/app_breakpoints.dart';
 import '../../theme/app_motion.dart';
@@ -24,18 +26,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _scrollController = ScrollController(initialScrollOffset: 1000000000);
   bool _showJumpToBottom = false;
   bool _stickToBottom = true;
+  double _followedExtent = 0;
   double? _bodyHeight;
   static const _jumpThreshold = 120.0;
 
   @override
-  void initState() {
-    super.initState();
-    _scrollController.addListener(_onScroll);
-  }
-
-  @override
   void dispose() {
-    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
   }
@@ -46,12 +42,36 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return position.maxScrollExtent - position.pixels <= _jumpThreshold;
   }
 
-  void _onScroll() {
-    _stickToBottom = _isNearBottom;
-    final show = !_isNearBottom;
-    if (show != _showJumpToBottom) {
-      setState(() => _showJumpToBottom = show);
+  bool _onUserScroll(ScrollNotification notification) {
+    if (notification.metrics.axis != Axis.vertical) return false;
+    if (notification is UserScrollNotification) {
+      if (notification.direction == ScrollDirection.idle) {
+        _stickToBottom = _isNearBottom;
+      }
+    } else if (notification is ScrollUpdateNotification &&
+        notification.dragDetails != null) {
+      _stickToBottom = _isNearBottom;
     }
+    _syncJumpButton();
+    return false;
+  }
+
+  bool _onContentGrowth(ScrollMetricsNotification notification) {
+    if (notification.metrics.axis != Axis.vertical) return false;
+    final max = notification.metrics.maxScrollExtent;
+    final grew = max > _followedExtent + 1;
+    _followedExtent = max;
+    if (grew && _stickToBottom) {
+      _scrollToBottom(force: true);
+    }
+    _syncJumpButton();
+    return false;
+  }
+
+  void _syncJumpButton() {
+    final show = !_stickToBottom && !_isNearBottom;
+    if (show == _showJumpToBottom) return;
+    setState(() => _showJumpToBottom = show);
   }
 
   void _scrollToBottom({bool force = false}) {
@@ -92,7 +112,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       final prevMessages = prev?.messagesFor(widget.conversationId) ?? const [];
       final nextLast = nextMessages.isEmpty ? null : nextMessages.last;
       final prevLast = prevMessages.isEmpty ? null : prevMessages.last;
-      if (nextMessages.length != prevMessages.length ||
+      final prevIds = {for (final message in prevMessages) message.id};
+      final sent = nextMessages.any(
+        (message) =>
+            message.role == MessageRole.user && !prevIds.contains(message.id),
+      );
+      if (sent) {
+        _stickToBottom = true;
+        _syncJumpButton();
+        _scrollToBottom(force: true);
+      } else if (nextMessages.length != prevMessages.length ||
           nextLast?.content != prevLast?.content ||
           nextLast?.status != prevLast?.status ||
           nextLast?.error != prevLast?.error) {
@@ -109,68 +138,84 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           _scrollToBottom(force: true);
         }
         return Column(
-      children: [
-        Expanded(
-          child: messageIds.isEmpty
-              ? SafeArea(
-                  top: false,
-                  child: Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: pagePad),
-                      child: Text(
-                        AppConstants.noMessages,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ),
-                )
-              : Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    SingleChildScrollView(
-                      controller: _scrollController,
-                      keyboardDismissBehavior:
-                          ScrollViewKeyboardDismissBehavior.onDrag,
-                      padding: EdgeInsets.fromLTRB(
-                        pagePad,
-                        AppSpacing.sm,
-                        pagePad,
-                        AppSpacing.lg,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          for (var i = 0; i < messageIds.length; i++) ...[
-                            if (i > 0) const SizedBox(height: AppSpacing.md),
-                            MessageBubble(
-                              key: ValueKey(messageIds[i]),
-                              conversationId: widget.conversationId,
-                              messageId: messageIds[i],
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: AppSpacing.sm,
+          children: [
+            Expanded(
+              child: messageIds.isEmpty
+                  ? SafeArea(
+                      top: false,
                       child: Center(
-                        child: JumpToBottomButton(
-                          visible: _showJumpToBottom,
-                          onPressed: _jumpToBottom,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(horizontal: pagePad),
+                          child: Text(
+                            AppConstants.noMessages,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                          ),
                         ),
                       ),
+                    )
+                  : Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        NotificationListener<ScrollNotification>(
+                          onNotification: _onUserScroll,
+                          child:
+                              NotificationListener<ScrollMetricsNotification>(
+                                onNotification: _onContentGrowth,
+                                child: SingleChildScrollView(
+                                  controller: _scrollController,
+                                  keyboardDismissBehavior:
+                                      ScrollViewKeyboardDismissBehavior.onDrag,
+                                  padding: EdgeInsets.fromLTRB(
+                                    pagePad,
+                                    AppSpacing.sm,
+                                    pagePad,
+                                    AppSpacing.lg,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      for (
+                                        var i = 0;
+                                        i < messageIds.length;
+                                        i++
+                                      ) ...[
+                                        if (i > 0)
+                                          const SizedBox(height: AppSpacing.md),
+                                        MessageBubble(
+                                          key: ValueKey(messageIds[i]),
+                                          conversationId: widget.conversationId,
+                                          messageId: messageIds[i],
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
+                        ),
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: AppSpacing.sm,
+                          child: Center(
+                            child: JumpToBottomButton(
+                              visible: _showJumpToBottom,
+                              onPressed: _jumpToBottom,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-        ),
-        ChatComposerSlot(conversationId: widget.conversationId),
-      ],
-    );
+            ),
+            ChatComposerSlot(conversationId: widget.conversationId),
+          ],
+        );
       },
     );
   }

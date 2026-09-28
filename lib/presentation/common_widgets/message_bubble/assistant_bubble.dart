@@ -25,6 +25,7 @@ class _AssistantBubble extends StatelessWidget {
     final empty = message.content.isEmpty;
     final stoppedBeforeReply =
         stopped && (empty || message.content == AppConstants.stoppedLabel);
+    final shown = visibleMarkdown(message.content);
     final inlineCodeStyle = AppTypography.codeStyle(colors.onSurface);
 
     return Align(
@@ -51,14 +52,14 @@ class _AssistantBubble extends StatelessWidget {
                     )
                   else ...[
                     _ReplyWidth(
-                      text: message.content,
+                      text: shown,
                       style: theme.textTheme.bodyLarge?.copyWith(height: 1.6),
                       maxWidth: maxWidth,
                       child: StreamingTextMarkdown(
                         key: ValueKey(
                           '${message.id}-${message.status.name}-${theme.brightness.name}',
                         ),
-                        text: message.content,
+                        text: shown,
                         markdownEnabled: true,
                         animationsEnabled: false,
                         autoScroll: false,

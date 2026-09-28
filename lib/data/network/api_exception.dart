@@ -75,7 +75,7 @@ class ApiException implements Exception {
     if (error is DioException) return ApiException.fromDio(error);
     if (error is StateError) {
       return ApiException(
-        message: AppConstants.mockStreamFailed,
+        message: AppConstants.genericError,
         detail: _shorten(error.message, 240),
       );
     }
@@ -163,10 +163,14 @@ class _GeminiBody {
   }
 
   String? detail(int? httpStatus) {
+    final clean = _clean(message);
+    if (httpStatus == 503) {
+      if (clean != null) return clean;
+      return AppConstants.serviceUnavailableDetail;
+    }
     final parts = <String>[];
     if (httpStatus != null) parts.add('HTTP $httpStatus');
     if (status != null && status!.isNotEmpty) parts.add(status!);
-    final clean = _clean(message);
     if (clean != null) parts.add(clean);
     if (parts.isEmpty) return null;
     return parts.join('\n');

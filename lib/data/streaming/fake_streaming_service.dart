@@ -58,10 +58,17 @@ class FakeStreamingService implements StreamingService {
 Object? _failureFor(MockStreamFailure failure) {
   return switch (failure) {
     MockStreamFailure.none => null,
-    MockStreamFailure.script => StateError(AppConstants.mockStreamFailed),
+    MockStreamFailure.unavailable => const ApiException(
+      message: AppConstants.serviceUnavailable,
+      detail: AppConstants.serviceUnavailableDetail,
+      statusCode: 503,
+    ),
+    MockStreamFailure.timedOut => const ApiException(
+      message: AppConstants.requestTimedOut,
+    ),
     MockStreamFailure.offline => const ApiException(
-        message: AppConstants.connectionFailed,
-        detail: AppConstants.noInternetConnection,
-      ),
+      message: AppConstants.connectionFailed,
+      detail: AppConstants.noInternetConnection,
+    ),
   };
 }

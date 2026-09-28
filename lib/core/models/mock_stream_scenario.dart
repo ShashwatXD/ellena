@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../constants/app_constants.dart';
 
-enum MockStreamFailure { none, script, offline }
+enum MockStreamFailure { none, unavailable, timedOut, offline }
 
 enum MockStreamScenario {
   short,
   markdown,
+  code,
   long,
   slow,
   empty,
@@ -17,6 +18,7 @@ enum MockStreamScenario {
   IconData get icon => switch (this) {
         MockStreamScenario.short => Icons.short_text_rounded,
         MockStreamScenario.markdown => Icons.code_rounded,
+        MockStreamScenario.code => Icons.data_object_rounded,
         MockStreamScenario.long => Icons.notes_rounded,
         MockStreamScenario.slow => Icons.hourglass_bottom_rounded,
         MockStreamScenario.empty => Icons.inbox_outlined,
@@ -28,17 +30,19 @@ enum MockStreamScenario {
   String get label => switch (this) {
         MockStreamScenario.short => AppConstants.mockScenarioShort,
         MockStreamScenario.markdown => AppConstants.mockScenarioMarkdown,
+        MockStreamScenario.code => AppConstants.mockScenarioCode,
         MockStreamScenario.long => AppConstants.mockScenarioLong,
         MockStreamScenario.slow => AppConstants.mockScenarioSlow,
         MockStreamScenario.empty => AppConstants.mockScenarioEmpty,
-        MockStreamScenario.errorEarly => AppConstants.mockScenarioErrorEarly,
-        MockStreamScenario.errorMid => AppConstants.mockScenarioErrorMid,
-        MockStreamScenario.offline => AppConstants.mockScenarioOffline,
+        MockStreamScenario.errorEarly => AppConstants.serviceUnavailable,
+        MockStreamScenario.errorMid => AppConstants.requestTimedOut,
+        MockStreamScenario.offline => AppConstants.connectionFailed,
       };
 
   Duration get chunkDelay => switch (this) {
         MockStreamScenario.short => const Duration(milliseconds: 90),
         MockStreamScenario.markdown => const Duration(milliseconds: 220),
+        MockStreamScenario.code => const Duration(milliseconds: 140),
         MockStreamScenario.long => const Duration(milliseconds: 140),
         MockStreamScenario.slow => const Duration(milliseconds: 700),
         MockStreamScenario.empty => Duration.zero,
@@ -50,6 +54,7 @@ enum MockStreamScenario {
   List<String> get chunks => switch (this) {
         MockStreamScenario.short => AppConstants.mockChunksShort,
         MockStreamScenario.markdown => AppConstants.fakeStreamChunks,
+        MockStreamScenario.code => AppConstants.mockChunksCode,
         MockStreamScenario.long => AppConstants.mockChunksLong,
         MockStreamScenario.slow => AppConstants.mockChunksSlow,
         MockStreamScenario.empty => const [],
@@ -66,9 +71,8 @@ enum MockStreamScenario {
       };
 
   MockStreamFailure get failure => switch (this) {
-        MockStreamScenario.errorEarly ||
-        MockStreamScenario.errorMid =>
-          MockStreamFailure.script,
+        MockStreamScenario.errorEarly => MockStreamFailure.unavailable,
+        MockStreamScenario.errorMid => MockStreamFailure.timedOut,
         MockStreamScenario.offline => MockStreamFailure.offline,
         _ => MockStreamFailure.none,
       };
