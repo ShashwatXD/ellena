@@ -70,7 +70,7 @@ Object? _failureFor(MockStreamFailure failure) {
       message: AppConstants.connectionFailed,
       detail: AppConstants.noInternetConnection,
     ),
-    MockStreamFailure.blocked => ApiException.contentPolicy(reason: 'SAFETY'),
+    MockStreamFailure.blocked => ApiException.contentPolicy(),
     MockStreamFailure.rateLimited => const ApiException(
       message: AppConstants.rateLimitReached,
       detail: AppConstants.rateLimitDetail,

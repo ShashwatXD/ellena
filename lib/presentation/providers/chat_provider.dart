@@ -37,6 +37,7 @@ class ChatNotifier extends Notifier<ChatState> {
   StreamSubscription<dynamic>? _networkSub;
   bool? _sawNetwork;
   StreamingService? _liveService;
+  int _writeEpoch = 0;
 
   ChatStorage get _storage => ref.read(chatStorageProvider);
   ChatCache get _cache => ref.read(chatCacheProvider);
@@ -78,14 +79,22 @@ class ChatNotifier extends Notifier<ChatState> {
   }
 
   Future<void> _persistConversation(String conversationId) async {
+    final epoch = _writeEpoch;
     final conversation = state.conversationById(conversationId);
-    if (conversation == null) return;
+    if (conversation == null || epoch != _writeEpoch) return;
     await _storage.saveConversation(conversation);
+    if (epoch != _writeEpoch) {
+      await _storage.deleteConversation(conversationId);
+      return;
+    }
     if (!state.messagesByConversation.containsKey(conversationId)) return;
     await _storage.saveMessages(
       conversationId,
       state.messagesFor(conversationId),
     );
+    if (epoch != _writeEpoch) {
+      await _storage.deleteConversation(conversationId);
+    }
   }
 
   void _scheduleStreamPersist(String conversationId) {
@@ -100,8 +109,11 @@ class ChatNotifier extends Notifier<ChatState> {
     String conversationId, {
     String kind = HistoryOpKind.put,
   }) async {
+    final epoch = _writeEpoch;
     _persistDebounce.remove(conversationId)?.cancel();
     await _persistConversation(conversationId);
+    if (epoch != _writeEpoch) return;
+    if (state.conversationById(conversationId) == null) return;
     await _history.commit(conversationId, kind);
   }
 
@@ -298,18 +310,29 @@ class ChatNotifier extends Notifier<ChatState> {
   }
 
   Future<void> deleteAllChats() async {
+    final ids = [for (final conversation in state.conversations) conversation.id];
+    _writeEpoch++;
+    _titleRequestedIds.clear();
+    for (final timer in _persistDebounce.values) {
+      timer.cancel();
+    }
+    _persistDebounce.clear();
+    _cache.invalidateAll();
+    state = const ChatState();
+
     await _liveService?.cancel();
     _liveService = null;
     for (final stream in _streams.values) {
       await stream.cancel();
     }
-    for (final timer in _persistDebounce.values) {
-      timer.cancel();
-    }
     _streams.clear();
-    _persistDebounce.clear();
+
     await _storage.clear();
     await _history.discard();
+    for (final id in ids) {
+      await _history.commit(id, HistoryOpKind.delete);
+    }
+    await _storage.clear();
     _cache.invalidateAll();
     state = const ChatState();
   }
@@ -559,7 +582,7 @@ class ChatNotifier extends Notifier<ChatState> {
       _failStream(
         conversationId,
         messageId,
-        ApiException.contentPolicy(reason: value),
+        ApiException.contentPolicy(),
       ),
     );
   }
@@ -656,6 +679,7 @@ class ChatNotifier extends Notifier<ChatState> {
   }
 
   void _publishMessages(String conversationId, List<Message> messages) {
+    if (state.conversationById(conversationId) == null) return;
     _cache.holdMessages(conversationId, messages);
     state = state.copyWith(
       messagesByConversation: _shown(conversationId, messages),

@@ -160,8 +160,7 @@ class _SkillHubScreenState extends ConsumerState<SkillHubScreen> {
                         icon: shownMine[i].icon,
                         name: shownMine[i].name,
                         description: shownMine[i].description,
-                        added: true,
-                        onAdd: builtIn.contains(shownMine[i].id)
+                        onRemove: builtIn.contains(shownMine[i].id)
                             ? null
                             : () {
                                 HapticFeedback.selectionClick();

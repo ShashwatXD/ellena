@@ -45,27 +45,54 @@ class AppTopBar extends ConsumerWidget implements PreferredSizeWidget {
         SizedBox(
           width: _side,
           child: searching
-              ? IconButton(
+              ? _TopBarIcon(
                   tooltip: AppConstants.closeSearchTooltip,
-                  onPressed: () {
-                    HapticFeedback.selectionClick();
+                  icon: Icons.close,
+                  onTap: () {
                     FocusManager.instance.primaryFocus?.unfocus();
                     ref.read(taskSearchProvider.notifier).close();
                   },
-                  icon: const Icon(Icons.close),
                 )
               : tasks
-                  ? IconButton(
+                  ? _TopBarIcon(
                       tooltip: AppConstants.searchTooltip,
-                      onPressed: () {
-                        HapticFeedback.selectionClick();
+                      icon: Icons.search,
+                      color: colors.onSurface,
+                      onTap: () {
                         ref.read(taskSearchProvider.notifier).open();
                       },
-                      icon: Icon(Icons.search, color: colors.onSurface),
                     )
                   : null,
         ),
       ],
+    );
+  }
+}
+
+class _TopBarIcon extends StatelessWidget {
+  const _TopBarIcon({
+    required this.tooltip,
+    required this.icon,
+    required this.onTap,
+    this.color,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onTap;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Center(
+          child: Icon(icon, color: color),
+        ),
+      ),
     );
   }
 }

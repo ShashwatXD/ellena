@@ -118,27 +118,39 @@ class _AccountDeviceCardsState extends ConsumerState<AccountDeviceCards> {
                 onTap: () => _soon(context),
               ),
               divider(),
-              Builder(
-                builder: (tileContext) {
-                  return AccountMenuTile(
-                    icon: Icons.dark_mode_outlined,
-                    label: AppConstants.settingsAppearance,
-                    showChevron: false,
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(appearance, style: valueStyle),
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.unfold_more_rounded,
-                          size: 20,
-                          color: colors.onSurfaceVariant,
+              AccountMenuTile(
+                icon: Icons.dark_mode_outlined,
+                label: AppConstants.settingsAppearance,
+                showChevron: false,
+                trailing: Builder(
+                  builder: (menuContext) {
+                    return Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => _pickAppearance(menuContext, mode),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 2,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(appearance, style: valueStyle),
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.unfold_more_rounded,
+                                size: 20,
+                                color: colors.onSurfaceVariant,
+                              ),
+                            ],
+                          ),
                         ),
-                      ],
-                    ),
-                    onTap: () => _pickAppearance(tileContext, mode),
-                  );
-                },
+                      ),
+                    );
+                  },
+                ),
               ),
               divider(),
               AccountMenuTile(

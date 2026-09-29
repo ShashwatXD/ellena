@@ -152,6 +152,7 @@ abstract final class AppConstants {
   static const String skillHubExplore = 'Explore more';
   static const String skillHubAdd = 'Add to my skills';
   static const String skillHubAdded = 'Added';
+  static const String skillHubRemove = 'Remove';
   static const String skillHubCreate = 'Create a skill';
   static const String skillHubOpenTooltip = 'Skill Hub';
   static const String settingsConnectors = 'Connectors';

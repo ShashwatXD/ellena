@@ -10,20 +10,22 @@ class SkillHubTile extends StatelessWidget {
     required this.icon,
     required this.name,
     required this.description,
-    this.added = false,
     this.onAdd,
+    this.onRemove,
   });
 
   final IconData icon;
   final String name;
   final String description;
-  final bool added;
   final VoidCallback? onAdd;
+  final VoidCallback? onRemove;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final canRemove = onRemove != null;
+    final canAdd = onAdd != null;
 
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -57,8 +59,18 @@ class SkillHubTile extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
-          if (onAdd != null)
-            _AddButton(added: added, onPressed: onAdd!)
+          if (canRemove)
+            _ActionButton(
+              label: AppConstants.skillHubRemove,
+              filled: true,
+              onPressed: onRemove!,
+            )
+          else if (canAdd)
+            _ActionButton(
+              label: AppConstants.skillHubAdd,
+              filled: false,
+              onPressed: onAdd!,
+            )
           else
             Text(
               AppConstants.skillHubAdded,
@@ -73,24 +85,28 @@ class SkillHubTile extends StatelessWidget {
   }
 }
 
-class _AddButton extends StatelessWidget {
-  const _AddButton({required this.added, required this.onPressed});
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    required this.label,
+    required this.filled,
+    required this.onPressed,
+  });
 
-  final bool added;
+  final String label;
+  final bool filled;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final label = added ? AppConstants.skillHubAdded : AppConstants.skillHubAdd;
 
     return TextButton(
       onPressed: onPressed,
       style: TextButton.styleFrom(
-        foregroundColor: added ? colors.onSurfaceVariant : colors.onSurface,
-        backgroundColor: added ? colors.surfaceContainerHighest : null,
-        side: added
+        foregroundColor: filled ? colors.onSurfaceVariant : colors.onSurface,
+        backgroundColor: filled ? colors.surfaceContainerHighest : null,
+        side: filled
             ? null
             : BorderSide(color: colors.outline, width: AppSpacing.stroke),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

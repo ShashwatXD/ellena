@@ -87,7 +87,7 @@ class ApiException implements Exception {
     );
   }
 
-  factory ApiException.contentPolicy({String? reason}) {
+  factory ApiException.contentPolicy() {
     return const ApiException(
       message: AppConstants.contentPolicyBlocked,
       detail: AppConstants.contentPolicyDetail,
